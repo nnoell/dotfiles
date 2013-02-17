@@ -4,12 +4,12 @@
 # Desc: dzen2 bar for XMonad, ran within xmonad.hs via spawnPipe
 
 #Layout
-BAR_H=9
-BIGBAR_W=65
-WIDTH=420
+XRES=1366
+YRES=768
+PANELBOXHEIGHT=12
 HEIGHT=16
 X_POS=946
-Y_POS=752
+BAR_H=9
 
 #Colors and font
 FONT="-*-montecarlo-medium-r-normal-*-11-*-*-*-*-*-*-*"
@@ -28,8 +28,7 @@ INTERVAL=5
 WIFISIGNAL=0
 
 textBox() {
-	#echo -n "^fg("$3")^i("$ICONPATH"boxleft.xbm)^bg("$3")^fg("$2")"$1"^bg()^fg("$3")^i("$ICONPATH"boxright.xbm)^fg()"
-	echo -n "^fg("$3")^i("$ICONPATH"boxleft.xbm)^ib(1)^r(1366x12)^p(-1366)^fg("$2")"$1"^fg("$3")^i("$ICONPATH"boxright.xbm)^fg("$4")^r(1366x12)^p(-1366)^fg()^ib(0)"
+	echo -n "^fg("$3")^i("$ICONPATH"boxleft.xbm)^ib(1)^r("$XRES"x"$PANELBOXHEIGHT")^p(-"$XRES")^fg("$2")"$1"^fg("$3")^i("$ICONPATH"boxright.xbm)^fg("$4")^r("$XRES"x"$PANELBOXHEIGHT")^p(-"$XRES")^fg()^ib(0)"
 }
 
 printDiskInfo() {
@@ -84,6 +83,17 @@ printBottomBar() {
 	done
 	return
 }
+
+if [[ $# -ge 5 ]]; then
+	XRES=$1
+	YRES=$2
+	PANELBOXHEIGHT=$3
+	HEIGHT=$3
+	X_POS=$5
+fi
+
+Y_POS=$(expr $YRES - $HEIGHT)
+WIDTH=$(expr $XRES - $X_POS)
 
 #Print all and pipe into dzen2
 printBottomBar | dzen2 -x $X_POS -y $Y_POS -w $WIDTH -h $HEIGHT -fn $FONT -ta 'r' -bg $DZEN_BG -fg $DZEN_FG -p -e 'onstart=lower'

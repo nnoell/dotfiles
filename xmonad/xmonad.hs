@@ -292,8 +292,8 @@ myUrgencyHook = withUrgencyHook dzenUrgencyHook
 myWorkspaceBar, myBottomStatusBar, myTopStatusBar :: String
 myWorkspaceBar    = "dzen2 -x '0' -y " ++ show (yRes - panelHeight) ++ " -h " ++ show panelHeight ++ " -w '946' -ta 'l' -fg '" ++ colorWhiteAlt ++ "' -bg '" ++
                     colorBlack ++ "' -fn '" ++ dzenFont ++ "' -p -e 'onstart=lower'"
-myBottomStatusBar = "/home/nnoell/bin/bottomstatusbar.sh"
-myTopStatusBar    = "/home/nnoell/bin/topstatusbar.sh"
+myBottomStatusBar = "/home/nnoell/bin/bottomstatusbar.sh " ++ show xRes ++ " " ++ show yRes ++ " " ++ show panelBoxHeight ++ " " ++ show panelHeight ++ " 946"
+myTopStatusBar    = "/home/nnoell/bin/topstatusbar.sh " ++ show xRes ++ " " ++ show yRes ++ " " ++ show panelBoxHeight ++ " " ++ show panelHeight ++ " 910"
 
 -- myWorkspaceBar config
 myLogHook :: Handle -> X ()
@@ -326,8 +326,8 @@ myLogHook h = dynamicLogWithPP $ defaultPP
 			| isPrefixOf "Full" xs     = "^fg(" ++ colorGreen ++ ")" ++ xs
 			| otherwise                = "^fg(" ++ colorBlue ++ ")" ++ xs
 		--box config
-		wrapTextBox fg bg1 bg2 t = "^fg(" ++ bg1 ++ ")^i(" ++ myIconPath  ++ "boxleft.xbm)^ib(1)^r(" ++ show xRes ++ "x12)^p(-" ++ show xRes ++ ")^fg(" ++ fg ++ ")" ++ t
-                                   ++ "^fg(" ++ bg1 ++ ")^i(" ++ myIconPath ++ "boxright.xbm)^fg(" ++ bg2  ++ ")^r(" ++ show xRes ++ "x12)^p(-" ++ show xRes ++ ")^fg()^ib(0)"
+		wrapTextBox fg bg1 bg2 t = "^fg(" ++ bg1 ++ ")^i(" ++ myIconPath  ++ "boxleft.xbm)^ib(1)^r(" ++ show xRes ++ "x" ++ show panelBoxHeight ++ ")^p(-" ++ show xRes ++ ")^fg(" ++ fg ++ ")" ++ t
+                                   ++ "^fg(" ++ bg1 ++ ")^i(" ++ myIconPath ++ "boxright.xbm)^fg(" ++ bg2  ++ ")^r(" ++ show xRes ++ "x" ++ show panelBoxHeight ++ ")^p(-" ++ show xRes ++ ")^fg()^ib(0)"
 		--clickable config
 		wrapClickLayout l = "^ca(1,xdotool key super+space)^ca(3,xdotool key super+shift+space)" ++ l ++ "^ca()^ca()"                       --clickable layout
 		wrapClickTitle t = "^ca(1,xdotool key super+m)^ca(2,xdotool key super+c)^ca(3,xdotool key super+shift+m)" ++ t ++ "^ca()^ca()^ca()" --clickable title

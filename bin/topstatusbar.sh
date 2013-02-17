@@ -3,15 +3,14 @@
 # Depends: dzen2-xft-xpm-xinerama-svn && conky
 # Desc: dzen2 bar for XMonad, ran within xmonad.hs via spawnPipe
 
-#Layout
-WIDTH_L=910
-WIDTH_R=456 #WIDTH_L + WIDTH_R = 1366
+#Default flags
+XRES=1366
+YRES=768
+PANELBOXHEIGHT=12
 HEIGHT=16
-X_POS_L=0
-X_POS_R=$WIDTH_L
-Y_POS=0
+WIDTH_L=910 #right alignment
 
-#Colors and font
+#Colors, fonts and paths
 CRIT="#66ff66" #green
 CRIT2="#e0105f" #red
 BAR_FG="#44aacc" #blue
@@ -22,9 +21,9 @@ DZEN_BG="#020202"
 DZEN_BG2="#101010"
 FONT="-*-montecarlo-medium-r-normal-*-11-*-*-*-*-*-*-*"
 ICONPATH="${HOME}/.icons/xbm_icons/subtle/"
-
-#Conky
 CONKYFILE="${HOME}/.config/conky/conkyrc"
+
+#Default values
 IFS='|'
 INTERVAL=1
 CPUTemp=0
@@ -36,6 +35,8 @@ CPULoad3=0
 MpdInfo=0
 MpdRandom="Off"
 MpdRepeat="Off"
+X_POS_L=0
+Y_POS=0
 
 #clickable areas
 VOL_TOGGLE_CMD="sh ${HOME}/bin/voldzen.sh t"
@@ -51,9 +52,13 @@ MPD_NEXT_CMD="ncmpcpp next"
 MPD_PREV_CMD="ncmpcpp prev"
 CAL_CMD="sh ${HOME}/bin/dzencal.sh"
 
+
+#==========================================
+#FUNCTIONS
+#==========================================
+
 textBox() {
-	#echo -n "^fg("$3")^i("$ICONPATH"boxleft.xbm)^bg("$3")^fg("$2")"$1"^bg()^fg("$3")^i("$ICONPATH"boxright.xbm)^fg()"
-	echo -n "^fg("$3")^i("$ICONPATH"boxleft.xbm)^ib(1)^r(1366x12)^p(-1366)^fg("$2")"$1"^fg("$3")^i("$ICONPATH"boxright.xbm)^fg("$4")^r(1366x12)^p(-1366)^fg()^ib(0)"
+	echo -n "^fg("$3")^i("$ICONPATH"boxleft.xbm)^ib(1)^r("$XRES"x"$PANELBOXHEIGHT")^p(-"$XRES")^fg("$2")"$1"^fg("$3")^i("$ICONPATH"boxright.xbm)^fg("$4")^r("$XRES"x"$PANELBOXHEIGHT")^p(-"$XRES")^fg()^ib(0)"
 }
 
 printVolInfo() {
@@ -141,8 +146,21 @@ printRight() {
 	return
 }
 
-#if [[ $# -gt 0 ]]; then
-#fi
+
+#==========================================
+#MAIN
+#==========================================
+
+#Flags
+if [[ $# -ge 5 ]]; then
+	XRES=$1
+	YRES=$2
+	PANELBOXHEIGHT=$3
+	HEIGHT=$4
+	WIDTH_L=$5
+fi
+WIDTH_R=$(expr $XRES - $WIDTH_L) #WIDTH_L + WIDTH_R = 1366
+X_POS_R=$WIDTH_L
 
 #Print all and pipe into dzen
 conky -c $CONKYFILE -u $INTERVAL | printLeft | dzen2 -x $X_POS_L -y $Y_POS -w $WIDTH_L -h $HEIGHT -fn $FONT -ta 'l' -bg $DZEN_BG -fg $DZEN_FG -p -e 'onstart=lower' &
