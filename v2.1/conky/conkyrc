@@ -1,0 +1,20 @@
+background no
+out_to_console yes
+out_to_x no
+update_interval 1.0
+update_interval_on_battery 1.0
+
+TEXT
+${cpu cpu1}|\
+${cpu cpu2}|\
+${cpu cpu3}|\
+${cpu cpu4}|\
+${freq_g}|\
+${mem}|\
+${memperc}|\
+^fg()${if_match "${mpd_status}" != "Stopped"}^fg(\#9d9d9d)${mpd_status}^fg(\#444444): \
+^fg(\#44aacc)${mpd_artist} ^fg(\#444444)- ^fg(\#44aacc)${mpd_title} \
+^fg(\#444444)[^fg(\#9d9d9d)${mpd_elapsed}^fg(\#444444)/^fg(\#9d9d9d)${mpd_length}^fg(\#444444)]\
+${else}^fg(\#9d9d9d)Stopped${endif}|\
+${mpd_random}|\
+${mpd_repeat}

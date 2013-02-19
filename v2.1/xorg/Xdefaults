@@ -1,0 +1,155 @@
+!urxvt
+URxvt*depth: 32
+URxvt*buffered: false
+URxvt*geometry: 120x40
+URxvt*background: #020202
+URxvt*foreground: #777777
+URxvt*colorUL: #00bbff
+URxvt*underlineColor: #555555
+URxvt*cursorColor: #55ddee
+URxvt*fading: 30
+URxvt*fadeColor: #020202
+!URxvt*transparent: true
+URxvt*tint: #020202
+URxvt*shading: 5
+URxvt*font: -*-montecarlo-medium-r-normal-*-11-*-*-*-c-*-*-*
+URxvt*boldFont: -*-montecarlo-medium-r-normal-*-11-*-*-*-c-*-*-*
+URxvt*title: urxvt
+URxvt*urgentOnBell: true
+URxvt*visualBell: false
+URxvt*scrollBar: false
+URxvt*scrollTtyOutput: false
+URxvt*scrollWithBuffer:	false
+URxvt*scrollTtyKeypress: true
+URxvt*cursorUnderline: true
+URxvt*pointerBlank: true
+URxvt.perl-ext-common: default,matcher
+URxvt.urlLauncher: /usr/bin/chromium
+URxvt.matcher.button: 1
+
+!xterm
+XTerm*background:	black
+XTerm*colorMode:	on
+XTerm*cursorColor:	#333333
+XTerm*font:			-*-montecarlo-medium-r-normal-*-11-*-*-*-c-*-*-*
+XTerm*boldFont:		-*-montecarlo-medium-r-normal-*-11-*-*-*-c-*-*-*
+XTerm*foreground:	grey
+XTerm*visualBell:	true
+
+!aterm
+Aterm*background:	black
+Aterm*foreground:	grey
+Aterm*cursorColor:	#333333
+Aterm*transparent:	true
+Aterm*tinting:		grey
+Aterm*shading:		30
+Aterm*font:			-*-montecarlo-medium-r-normal-*-11-*-*-*-c-*-*-*
+Aterm*boldFont:		-*-montecarlo-medium-r-normal-*-11-*-*-*-c-*-*-*
+Aterm*title:		aterm
+Aterm*visualBell:	false
+Aterm*scrollBar:	false
+
+!xcalc
+XCalc*geometry: 300x400
+XCalc*cursor: left_ptr
+XCalc*shapeStyle: rectangle
+XCalc*background: #0f0f0f
+XCalc*ti*bevel*background: #111111
+XCalc*ti*bevel*screen*background: #000000
+XCalc*ti*bevel*screen*DEG*background: #000000
+XCalc*ti*bevel*screen*DEG*foreground: #20b2aa
+XCalc*ti*bevel*screen*GRAD*background: #000000
+XCalc*ti*bevel*screen*GRAD*foreground: #20b2aa
+XCalc*ti*bevel*screen*RAD*background: #000000
+XCalc*ti*bevel*screen*RAD*foreground: #20b2aa
+XCalc*ti*bevel*screen*INV*background: #000000
+XCalc*ti*bevel*screen*INV*foreground: #ff0000
+XCalc*ti*bevel*screen*LCD*background: #000000
+XCalc*ti*bevel*screen*LCD*foreground: #20b2aa
+XCalc*ti*bevel*screen*LCD*shadowWidth: 0
+XCalc*ti*bevel*screen*M*background:	#000000
+XCalc*ti*bevel*screen*M*foreground:	#20b2aa
+XCalc*ti*bevel*screen*P*background:	#000000
+XCalc*ti*bevel*screen*P*foreground:	#ffff00
+XCalc*ti*Command*foreground: #ffffff
+XCalc*ti*Command*background: #777777
+XCalc*ti*button5*background: #cd8500
+XCalc*ti*button19*background: #611161
+XCalc*ti*button18*background: #611161
+XCalc*ti*button20*background: #611111
+XCalc*ti*button25*background: #722222
+XCalc*ti*button30*background: #833333
+XCalc*ti*button35*background: #944444
+XCalc*ti*button40*background: #a55555
+XCalc*ti*button22*background: #222262
+XCalc*ti*button23*background: #222262
+XCalc*ti*button24*background: #222272
+XCalc*ti*button27*background: #333373
+XCalc*ti*button28*background: #333373
+XCalc*ti*button29*background: #333373
+XCalc*ti*button32*background: #444484
+XCalc*ti*button33*background: #444484
+XCalc*ti*button34*background: #444484
+XCalc*ti*button37*background: #555595
+XCalc*ti*button38*background: #555595
+XCalc*ti*button39*background: #555595
+
+!Xclock
+xclock*update: 1
+xclock*analog: true
+xclock*Foreground: gray
+xclock*background: black
+
+
+!nnoell Colors
+!black
+URxvt*color0:  #3a3c3e
+URxvt*color8:  #505055
+!red
+URxvt*color1:  #e0105f
+URxvt*color9:  #f01050
+!green
+URxvt*color2:  #35d95d
+URxvt*color10: #66ff66
+!yellow
+URxvt*color3:  #ffaf5f
+URxvt*color11: #ffcc9a
+!blue
+URxvt*color4:  #44aacc
+URxvt*color12: #55ddee
+!magenta
+URxvt*color5:  #7771cc
+URxvt*color13: #9993ee
+!cyan
+URxvt*color6:  #5e7075
+URxvt*color14: #a0bfbf
+!white
+URxvt*color7:  #e5e5e5
+URxvt*color15: #f0f0f0
+
+
+!Neuromouse Colors
+!black
+!URxvt*color0:  #282a2b
+!URxvt*color8:  #2c2f30
+!red
+!URxvt*color1:  #ac357e
+!URxvt*color9:  #df45a4
+!green
+!URxvt*color2:  #35d95d
+!URxvt*color10: #66ff66
+!yellow
+!URxvt*color3:  #a8ac35
+!URxvt*color11: #dadf45
+!blue
+!URxvt*color4:  #273a87
+!URxvt*color12: #3955c4
+!magenta
+!URxvt*color5:  #666699
+!URxvt*color13: #8888cc
+!cyan
+!URxvt*color6:  #8caff0
+!URxvt*color14: #9bbaf1
+!white
+!URxvt*color7:  #a8a8a8
+!URxvt*color15: #f0f0f0

@@ -1,0 +1,117 @@
+! Urxvt ---------------------------------------------------------------
+!Font
+!*font: -misc-fixed-medium-r-semicondensed-*-*-*-*-*-*-*-*-*
+!*boldFont: -misc-fixed-medium-r-semicondensed-*-*-*-*-*-*-*-*-*
+!*italicFont: -misc-fixed-medium-r-semicondensed-*-*-*-*-*-*-*-*-*
+!*boldItalicFont: -misc-fixed-medium-r-semicondensed-*-*-*-*-*-*-*-*-*
+*font: -xos4-terminus-medium-r-normal-*-12-*-*-*-*-*-*-*
+*boldFont: -xos4-terminus-medium-r-normal-*-12-*-*-*-*-*-*-*
+*italicFont: -xos4-terminus-medium-r-normal-*-12-*-*-*-*-*-*-*
+*boldItalicFont: -xos4-terminus-medium-r-normal-*-12-*-*-*-*-*-*-*
+URxvt*letterSpace: 0
+!Options
+!URxvt*termName: rxvt-256color
+URxvt.depth: 32
+!URxvt*title: Terminal
+URxvt*urgentOnBell: true
+URxvt*visualBell: false
+!URxvt*borderless: true
+URxvt*saveLines: 5000
+URxvt*internalBorder: 0
+Urxvt*secondaryScroll: true
+URxvt*scrollTtyKeypress: true
+URxvt*scrollWithBuffer: true
+URxvt*scrollTtyOutput: false
+URxvt*loginShell: true
+URxvt*scrollBar: false
+!Transparency
+!URxvt*transparent: true
+!URxvt*tint: #020202
+!URxvt*shading: 5
+!URxvt*inheritPixmap: true
+!Links
+URxvt*perl-ext-common: default,matcher,-option-popup,-selection-popup,-realine
+URxvt*matcher.button: 1
+URxvt*urlLauncher: chromium
+!Cursor
+URxvt*cursorColor: #999999
+URxvt*cursorBlink: true
+URxvt*cursorUnderline: false
+!Binding Keys
+URxvt*keysym.Home: \033[1~
+URxvt*keysym.End: \033[4~
+
+
+! Colors --------------------------------------------------------------
+! black 0-8; red 1-9; green 2-10; yellow 3-11; blue 4-12; magenta 5-13; cyan 6-14; white 7-15
+*background: #020202
+*foreground: #999999
+
+!neuromouse
+*color0:  #282a2b
+*color8:  #2c2f30
+*color1:  #ac357e
+*color9:  #df45a4
+*color2:  #65ac35
+*color10: #83df45
+*color3:  #a8ac35
+*color11: #dadf45
+*color4:  #273a87
+*color12: #3955c4
+*color5:  #666699
+*color13: #8888cc
+*color6:  #8caff0
+*color14: #9bbaf1
+*color7:  #a8a8a8
+*color15: #f0f0f0
+
+
+! Xcalc ----------------------------------------------------------------------
+xcalc*ti.button1.vertDistance: 4
+xcalc*ti.button2.vertDistance: 4
+xcalc*ti.button3.vertDistance: 4
+xcalc*ti.button4.vertDistance: 4
+xcalc*ti.button5.vertDistance: 4
+xcalc*ti.background: gray90
+xcalc*ti.bevel.borderColor: gray65
+xcalc*ti.bevel.borderWidth: 1
+xcalc*ti.bevel.vertDistance: 4
+xcalc*ti.bevel.defaultDistance: 0
+xcalc*ti.bevel.background: rgb:b/c/b
+xcalc*ti.bevel.screen*background: rgb:b/c/b
+xcalc*ti.bevel.screen.borderColor: rgb:b/c/b
+xcalc*ti.bevel.screen.vertDistance: 10
+xcalc*ti.bevel.screen.horizDistance: 10
+xcalc*ti.bevel.screen*left: chainLeft
+xcalc*ti.bevel.screen*right: chainRight
+xcalc*ti.bevel.screen*top: chainTop
+xcalc*ti.bevel.screen*bottom: chainBottom
+xcalc*ti.bevel.screen*LCD.foreground: gray10
+xcalc*ti.bevel.screen*INV.vertDistance: 0
+xcalc*ti.Command.borderColor: gray65
+xcalc*ti.Command.background: gray85
+xcalc*ti.Command.foreground: gray30
+xcalc*ti.button5.background: rgb:e/b/b
+xcalc*ti.button20.background: rgb:e/d/c
+xcalc*ti.button25.background: rgb:e/d/c
+xcalc*ti.button30.background: rgb:e/d/c
+xcalc*ti.button35.background: rgb:e/d/c
+xcalc*ti.button40.background: rgb:b/b/e
+xcalc*ti.button22.background: gray95
+xcalc*ti.button23.background: gray95
+xcalc*ti.button24.background: gray95
+xcalc*ti.button27.background: gray95
+xcalc*ti.button28.background: gray95
+xcalc*ti.button29.background: gray95
+xcalc*ti.button32.background: gray95
+xcalc*ti.button33.background: gray95
+xcalc*ti.button34.background: gray95
+xcalc*ti.button37.background: gray95
+xcalc*ti.button38.background: gray95
+xcalc*ti.button39.background: gray95
+
+! Xclock --------------------------------------------------------------------
+xclock*update:            1
+xclock*analog:            true
+xclock*Foreground:        gray
+xclock*background:        black

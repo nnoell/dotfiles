@@ -1,0 +1,20 @@
+#!/bin/sh
+#
+# ~/.xinitrc
+
+# Source files
+/usr/bin/xrdb -load ~/.config/xorg/Xdefaults
+source ~/.config/shell/exports
+
+# Start deamons
+/usr/bin/mpd ~/.mpd/mpd.conf
+/usr/bin/urxvtd -q -f -o
+
+# Set typematic
+/usr/bin/xset r rate 180 20
+
+# Set wallpaper
+/usr/bin/feh --bg-scale ~/Pictures/wallpapers/arch/arch_3.jpg
+
+# Launch window manager
+exec ck-launch-session dbus-launch --sh-syntax --exit-with-session /usr/bin/xmonad
