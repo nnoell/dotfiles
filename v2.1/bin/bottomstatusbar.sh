@@ -88,7 +88,7 @@ if [[ $# -ge 5 ]]; then
 	XRES=$1
 	YRES=$2
 	PANELBOXHEIGHT=$3
-	HEIGHT=$3
+	HEIGHT=$4
 	X_POS=$5
 fi
 
