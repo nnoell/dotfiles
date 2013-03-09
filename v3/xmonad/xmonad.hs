@@ -7,10 +7,6 @@
 {-# LANGUAGE DeriveDataTypeable, NoMonomorphismRestriction, TypeSynonymInstances, MultiParamTypeClasses,  ImplicitParams, PatternGuards #-}
 
 -- Imported libraries
-
---import XMonad.Util.NnoellLoggers
-import XMonad.Util.Loggers
-
 import XMonad
 import XMonad.Core
 import XMonad.Layout
@@ -33,6 +29,7 @@ import XMonad.Layout.Minimize
 import XMonad.Layout.Maximize
 import XMonad.Layout.WindowNavigation
 import XMonad.StackSet (RationalRect (..), currentTag)
+import XMonad.Util.Loggers
 import XMonad.Hooks.DynamicLog
 import XMonad.Hooks.DynamicHooks
 import XMonad.Hooks.ManageDocks
