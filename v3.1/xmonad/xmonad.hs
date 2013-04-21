@@ -6,7 +6,7 @@
 -- Language
 {-# LANGUAGE DeriveDataTypeable, NoMonomorphismRestriction, TypeSynonymInstances, MultiParamTypeClasses,  ImplicitParams, PatternGuards #-}
 
--- Imported libraries
+-- Modules
 import XMonad
 import XMonad.Core
 import XMonad.Layout
@@ -29,7 +29,6 @@ import XMonad.Layout.Minimize
 import XMonad.Layout.Maximize
 import XMonad.Layout.WindowNavigation
 import XMonad.StackSet (RationalRect (..), currentTag)
-import XMonad.Util.Loggers
 import XMonad.Hooks.DynamicLog
 import XMonad.Hooks.DynamicHooks
 import XMonad.Hooks.ManageDocks
@@ -43,11 +42,13 @@ import XMonad.Prompt.XMonad
 import XMonad.Prompt.Man
 import XMonad.Util.Timer
 import XMonad.Util.Cursor
+import XMonad.Util.Loggers
 import XMonad.Util.EZConfig
 import XMonad.Util.Run (spawnPipe)
 import XMonad.Util.Scratchpad
 import XMonad.Util.NamedScratchpad
 import XMonad.Actions.CycleWS
+import XMonad.Actions.ShowText
 import XMonad.Actions.GridSelect
 import XMonad.Actions.MouseResize
 import Data.IORef
@@ -56,7 +57,7 @@ import Data.List
 import Graphics.X11.ExtraTypes.XF86
 import System.Exit
 import System.IO (Handle, hPutStrLn)
-import System.IO
+import Control.Exception as E
 import qualified XMonad.StackSet as W
 import qualified Data.Map as M
 import qualified XMonad.Actions.FlexibleResize as Flex
@@ -66,10 +67,14 @@ import qualified XMonad.Util.ExtensibleState as XS
 -- Main
 main :: IO ()
 main = do
+	spawn "/home/nnoell/bin/cpuUsage.sh 0"
+	spawn "/home/nnoell/bin/cpuUsage.sh 1"
+	spawn "/home/nnoell/bin/cpuUsage.sh 2"
+	spawn "/home/nnoell/bin/cpuUsage.sh 3"
 	topLeftBar              <- spawnPipe myTopLeftBar
 	topRightBar             <- spawnPipe myTopRightBar
-	workspaceBar            <- spawnPipe myWorkspaceBar
-	bottomBar               <- spawnPipe $ myBinPath ++ "bottomBar.sh"
+	botLeftBar              <- spawnPipe myBotLeftBar
+	botRightBar             <- spawnPipe myBotRightBar
 	focusFollow             <- newIORef True; let ?focusFollow = focusFollow
 	xmonad $ myUrgencyHook $ defaultConfig
 		{ terminal           = "urxvtc"
@@ -81,7 +86,7 @@ main = do
 		, layoutHook         = myLayoutHook
 		, workspaces         = myWorkspaces
 		, manageHook         = myManageHook <+> manageScratchPad <+> manageDocks <+> dynamicMasterHook
-		, logHook            = myLogHook workspaceBar <+> myLogHook2 topLeftBar <+> myLogHook3 topRightBar <+> ewmhDesktopsLogHook >> setWMName "LG3D"
+		, logHook            = myLogHook botLeftBar <+> myLogHook1 botRightBar <+> myLogHook2 topLeftBar <+> myLogHook3 topRightBar <+> ewmhDesktopsLogHook >> setWMName "LG3D"
 		, handleEventHook    = myHandleEventHook
 		, keys               = myKeys
 		, mouseBindings      = myMouseBindings
@@ -170,6 +175,13 @@ myGSConfig colorizer = (buildDefaultGSConfig myColorizer)
 	, gs_font        = dzenFont
 	}
 
+myTextConfig :: ShowTextConfig
+myTextConfig = STC
+	{ st_font = dzenFont
+	, st_bg = colorBlack
+	, st_fg = colorWhite
+    }
+
 -- Workspaces
 myWorkspaces :: [WorkspaceId]
 myWorkspaces = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
@@ -237,7 +249,7 @@ instance ExtensionClass TidState where
 
 -- Handle event hook
 myHandleEventHook :: (?focusFollow::IORef Bool) => Event -> X All
-myHandleEventHook = fullscreenEventHook <+> docksEventHook <+> toggleFocus <+> clockEventHook
+myHandleEventHook = fullscreenEventHook <+> docksEventHook <+> toggleFocus <+> clockEventHook <+> handleTimerEvent
 	where
 		toggleFocus e = case e of --thanks to Vgot
 			CrossingEvent {ev_window=w, ev_event_type=t}
@@ -308,13 +320,13 @@ myManageHook = composeAll . concat $
 myUrgencyHook = withUrgencyHook dzenUrgencyHook
 	{ args = ["-fn", dzenFont, "-bg", colorBlack, "-fg", colorGreen, "-h", show panelHeight] }
 
--- WorkspaceBar
-myWorkspaceBar = "dzen2 -x 0 -y 752 -h 16 -w 380 -ta 'l' -fg '" ++ colorWhiteAlt ++ "' -bg '" ++ colorBlack ++ "' -fn '" ++ dzenFont ++ "' -p -e 'onstart=lower'"
+-- botLeftBar
+myBotLeftBar = "dzen2 -x 0 -y 752 -h 16 -w 400 -ta 'l' -fg '" ++ colorWhiteAlt ++ "' -bg '" ++ colorBlack ++ "' -fn '" ++ dzenFont ++ "' -p -e 'onstart=lower'"
 myLogHook :: Handle -> X ()
 myLogHook h = dynamicLogWithPP $ defaultPP
 	{ ppOutput          = hPutStrLn h
 	, ppSort            = fmap (namedScratchpadFilterOutWorkspace .) (ppSort defaultPP) --hide "NSP" from workspace list
-	, ppOrder           = \(ws:l:_:x) -> [ws,l]
+	, ppOrder           = \(ws:l:_:x) -> [ws] ++ x
 	, ppSep             = " "
 	, ppWsSep           = ""
 	, ppCurrent         = wrapTextBox colorBlack    colorBlue    colorBlack
@@ -322,17 +334,99 @@ myLogHook h = dynamicLogWithPP $ defaultPP
 	, ppVisible         = wrapTextBox colorBlack    colorGrayAlt colorBlack . wrapClickWorkspace
 	, ppHiddenNoWindows = wrapTextBox colorBlack    colorGrayAlt colorBlack . wrapClickWorkspace
 	, ppHidden          = wrapTextBox colorWhiteAlt colorGrayAlt colorBlack . wrapClickWorkspace
-	, ppLayout          = \l -> (wrapClickLayout (wrapTextBox colorBlue colorGrayAlt colorBlack "LAYOUT")) ++ (wrapTextBox colorGray colorGrayAlt colorBlack $ layoutText $ removeWord $ removeWord l)
+	, ppExtras          = [ (wrapLoggerBox colorBlue colorGrayAlt colorBlack $ loggerText "UPTIME") ++! (wrapLoggerBox colorWhiteAlt colorGrayAlt colorBlack uptime)
+						  ]
 	}
-	where
-		removeWord = tail . dropWhile (/= ' ')
-		layoutText xs
-			| isPrefixOf "Mirror" xs   = layoutText $ removeWord xs ++ " [M]"
-			| isPrefixOf "ReflectY" xs = layoutText $ removeWord xs ++ " [Y]"
-			| isPrefixOf "ReflectX" xs = layoutText $ removeWord xs ++ " [X]"
-			| isPrefixOf "Float" xs    = "^fg(" ++ colorRed ++ ")" ++ xs
-			| isPrefixOf "Full" xs     = "^fg(" ++ colorGreen ++ ")" ++ xs
-			| otherwise                = "^fg(" ++ colorWhiteAlt ++ ")" ++ xs
+
+-- botRightBar
+myBotRightBar = "dzen2 -x 400 -y 752 -h 16 -w 966 -ta 'r' -fg '" ++ colorWhiteAlt ++ "' -bg '" ++ colorBlack ++ "' -fn '" ++ dzenFont ++ "' -p -e 'onstart=lower'"
+myLogHook1 :: Handle -> X ()
+myLogHook1 h = dynamicLogWithPP $ defaultPP
+	{ ppOutput          = hPutStrLn h
+	, ppOrder           = \(_:_:_:x) -> x
+	, ppSep             = " "
+	, ppExtras          = [ (wrapLoggerBox colorGray colorGrayAlt colorBlack $ loggerText "CPU")     ++! (wrapLoggerBox colorBlue colorGrayAlt colorBlack cpuUsage)
+						  , (wrapLoggerBox colorGray colorGrayAlt colorBlack $ loggerText "MEM")     ++! (wrapLoggerBox colorBlue colorGrayAlt colorBlack memUsage)
+						  , (wrapLoggerBox colorGray colorGrayAlt colorBlack $ loggerText "TEMP")    ++! (wrapLoggerBox colorBlue colorGrayAlt colorBlack cpuTemp)
+						  , (wrapLoggerBox colorGray colorGrayAlt colorBlack $ loggerText "WIFI")    ++! (wrapLoggerBox colorBlue colorGrayAlt colorBlack wifiSignal)
+						  , (wrapLoggerBox colorGray colorGrayAlt colorBlack $ loggerText "BATTERY") ++! (wrapLoggerBox colorBlue colorGrayAlt colorBlack batPercent) ++! (wrapLoggerBox colorWhiteAlt colorGrayAlt colorBlack batStatus)
+						  ]
+	}
+
+(++!) :: Logger -> Logger -> Logger
+l1 ++! l2 = do
+	log1 <- l1
+	log2 <- l2
+	let text = do
+		str1 <- log1
+		str2 <- log2
+		return $ str1 ++ str2
+	return text
+
+loggerText :: String -> Logger
+loggerText t = return $ return t
+
+readWithE :: FilePath -> String -> String -> IO String
+readWithE p e c = E.catch (do
+	contents <- readFile p
+	return $ (init contents) ++ c ) ((\_ -> return e) :: E.SomeException -> IO String) --init removes \n from contents
+
+batPercent :: Logger
+batPercent = do
+	percent <- liftIO $ readWithE "/sys/class/power_supply/BAT0/capacity" "N/A" "%"
+	return $ return percent
+
+batStatus :: Logger
+batStatus = do
+	status <- liftIO $ readWithE "/sys/class/power_supply/BAT0/status" "AC Conection" ""
+	return $ return status
+
+wifiSignal :: Logger
+wifiSignal = do
+	signalContent <- liftIO $ readWithE "/proc/net/wireless" "N/A" ""
+	let signalLines = lines signalContent
+	let signal = if (length signalLines) >= 3 then (init ((words (signalLines !! 2)) !! 2) ++ "%") else "Off"
+	return $ return signal
+
+cpuTemp :: Logger
+cpuTemp = do
+	temp1 <- liftIO $ readWithE "/sys/bus/platform/devices/coretemp.0/temp1_input" "0" ""
+	temp2 <- liftIO $ readWithE "/sys/bus/platform/devices/coretemp.0/temp2_input" "0" ""
+	temp3 <- liftIO $ readWithE "/sys/bus/platform/devices/coretemp.0/temp3_input" "0" ""
+	let divc x = show $ div (read x::Int) 1000
+	return $ return $ (divc temp1) ++ "° " ++ (divc temp2) ++ "° " ++ (divc temp3) ++ "°"
+
+memUsage :: Logger
+memUsage = do
+	memInfo <- liftIO $ readWithE "/proc/meminfo" "N/A" ""
+	let memInfoLines = lines memInfo
+	let memTotal = read (words (memInfoLines !! 0) !! 1)::Int
+	let memFree  = read (words (memInfoLines !! 1) !! 1)::Int
+	let buffers  = read (words (memInfoLines !! 2) !! 1)::Int
+	let cached   = read (words (memInfoLines !! 3) !! 1)::Int
+	let used     = memTotal - (buffers + cached + memFree)
+	let perc     = div ((memTotal - (buffers + cached + memFree)) * 100) memTotal
+	return $ return $ (show perc) ++ "% " ++ (show $ div used 1024) ++ "MB"
+
+-- This is an ugly hack that depends on cpuUsage.sh script
+cpuUsage :: Logger
+cpuUsage = do
+	cpu0 <- liftIO $ readWithE "/tmp/cpuUsage0" "0" "%"
+	cpu1 <- liftIO $ readWithE "/tmp/cpuUsage1" "0" "%"
+	cpu2 <- liftIO $ readWithE "/tmp/cpuUsage2" "0" "%"
+	cpu3 <- liftIO $ readWithE "/tmp/cpuUsage3" "0" "%"
+	return $ return $ cpu0 ++ " " ++ cpu1 ++ " " ++ cpu2 ++ " " ++ cpu3
+
+uptime :: Logger
+uptime = do
+	uptime <- liftIO $ readWithE "/proc/uptime" "0" ""
+	let u  = read (takeWhile (/='.') uptime )::Integer
+	let h  = div u 3600
+	let hr = mod u 3600
+	let m  = div hr 60
+	let s  = mod hr 60
+	return $ return $ (show h) ++ "h " ++ (show m) ++ "m " ++ (show s) ++ "s"
+
 
 -- TopLeftBar
 myTopLeftBar = "dzen2 -x 0 -y 0 -h 16 -w 1050 -ta 'l' -fg '" ++ colorWhiteAlt ++ "' -bg '" ++ colorBlack ++ "' -fn '" ++ dzenFont ++ "' -p -e 'onstart=lower'"
@@ -341,8 +435,9 @@ myLogHook2 h = dynamicLogWithPP $ defaultPP
 	{ ppOutput          = hPutStrLn h
 	, ppOrder           = \(_:_:_:x) -> x
 	, ppSep             = " "
-	, ppExtras          = [ wrapL (wrapClickGrid $ wrapTextBox colorBlue  colorGrayAlt  colorBlack "WORKSPACE") "" $ wrapLoggerBox colorWhiteAlt colorGrayAlt colorBlack $ onLogger namedWorkspaces logCurrent
-						  , wrapL (wrapClickTitle $ wrapTextBox colorBlack colorWhiteAlt colorBlack "FOCUS") "" $ wrapLoggerBox colorWhiteAlt colorGrayAlt colorBlack $ shortenL 144 logTitle
+	, ppExtras          = [ wrapL (wrapClickLayout $ wrapTextBox colorBlue colorGrayAlt colorBlack "LAYOUT") "" $ wrapLoggerBox colorWhiteAlt colorGrayAlt colorBlack $ onLogger layoutText $ removeWordL $ removeWordL logLayout
+						  , wrapL (wrapClickGrid $ wrapTextBox colorBlue colorGrayAlt colorBlack "WORKSPACE") "" $ wrapLoggerBox colorWhiteAlt colorGrayAlt colorBlack $ onLogger namedWorkspaces logCurrent
+						  , wrapL (wrapClickTitle $ wrapTextBox colorBlack colorWhiteAlt colorBlack "FOCUS") "" $ wrapLoggerBox colorWhiteAlt colorGrayAlt colorBlack $ shortenL 120 logTitle
 						  ]
 	}
 	where
@@ -358,6 +453,21 @@ myLogHook2 h = dynamicLogWithPP $ defaultPP
 			| w == "9"  = "^fg(" ++ colorGreen ++ ")9^fg(" ++ colorGray ++ ")|^fg()Alternative"
 			| w == "0"  = "^fg(" ++ colorGreen ++ ")0^fg(" ++ colorGray ++ ")|^fg()Alternative"
 			| otherwise = "^fg(" ++ colorRed   ++ ")x^fg(" ++ colorGray ++ ")|^fg()" ++ w
+		removeWord = tail . dropWhile (/= ' ')
+		removeWordL l = do
+			log <- l
+			let text = do
+				logStr <- log
+				return $ removeWord logStr
+			return text
+		layoutText xs
+			| isPrefixOf "Mirror" xs       = layoutText $ removeWord xs ++ " [M]"
+			| isPrefixOf "ReflectY" xs     = layoutText $ removeWord xs ++ " [Y]"
+			| isPrefixOf "ReflectX" xs     = layoutText $ removeWord xs ++ " [X]"
+			| isPrefixOf "Simple Float" xs = "^fg(" ++ colorRed ++ ")" ++ xs
+			| isPrefixOf "Full Tabbed" xs  = "^fg(" ++ colorGreen ++ ")" ++ xs
+			| otherwise                    = "^fg(" ++ colorWhiteAlt ++ ")" ++ xs
+
 
 -- TopRightBar
 myTopRightBar = "dzen2 -x 1050 -y 0 -h 16 -w 366 -ta 'r' -fg '" ++ colorWhiteAlt ++ "' -bg '" ++ colorBlack ++ "' -fn '" ++ dzenFont ++ "' -p -e 'onstart=lower'"
@@ -404,90 +514,90 @@ wrapLoggerBox fg bg1 bg2 l = do
 myKeys :: XConfig Layout -> M.Map (KeyMask, KeySym) (X ())
 myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 	--Xmonad bindings
-	[((modMask .|. shiftMask, xK_q), io (exitWith ExitSuccess))                                 --Quit xmonad
-	, ((modMask, xK_q), restart "xmonad" True)                                                  --Restart xmonad
-	, ((mod1Mask, xK_F2), shellPrompt myXPConfig)                                               --Launch Xmonad shell prompt
-	, ((modMask, xK_F2), xmonadPrompt myXPConfig)                                               --Launch Xmonad prompt
-	, ((mod1Mask, xK_F3), manPrompt myXPConfig)                                                 --Launch man prompt
-	, ((modMask, xK_g), goToSelected $ myGSConfig myColorizer)                                  --Launch GridSelect
-	, ((modMask, xK_masculine), scratchPad)                                                     --Scratchpad
-	, ((modMask .|. shiftMask, xK_Return), spawn $ XMonad.terminal conf)                        --Launch default terminal
+	[((modMask .|. shiftMask, xK_q), io (exitWith ExitSuccess))          --Quit xmonad
+	, ((modMask, xK_q), restart "xmonad" True)                           --Restart xmonad
+	, ((mod1Mask, xK_F2), shellPrompt myXPConfig)                        --Launch Xmonad shell prompt
+	, ((modMask, xK_F2), xmonadPrompt myXPConfig)                        --Launch Xmonad prompt
+	, ((mod1Mask, xK_F3), manPrompt myXPConfig)                          --Launch man prompt
+	, ((modMask, xK_g), goToSelected $ myGSConfig myColorizer)           --Launch GridSelect
+	, ((modMask, xK_masculine), scratchPad)                              --Scratchpad
+	, ((modMask .|. shiftMask, xK_Return), spawn $ XMonad.terminal conf) --Launch default terminal
 	--Window management bindings
-	, ((modMask, xK_c), kill)                                                                   --Close focused window
+	, ((modMask, xK_c), kill)                                              --Close focused window
 	, ((mod1Mask, xK_F4), kill)
-	, ((modMask, xK_n), refresh)                                                                --Resize viewed windows to the correct size
-	, ((modMask, xK_Tab), windows W.focusDown)                                                  --Move focus to the next window
+	, ((modMask, xK_n), refresh)                                           --Resize viewed windows to the correct size
+	, ((modMask, xK_Tab), windows W.focusDown)                             --Move focus to the next window
 	, ((modMask, xK_j), windows W.focusDown)
 	, ((mod1Mask, xK_Tab), windows W.focusDown)
-	, ((modMask, xK_k), windows W.focusUp)                                                      --Move focus to the previous window
-	, ((modMask, xK_a), windows W.focusMaster)                                                  --Move focus to the master window
-	, ((modMask .|. shiftMask, xK_a), windows W.swapMaster)                                     --Swap the focused window and the master window
-	, ((modMask .|. shiftMask, xK_j), windows W.swapDown)                                       --Swap the focused window with the next window
-	, ((modMask .|. shiftMask, xK_k), windows W.swapUp)                                         --Swap the focused window with the previous window
-	, ((modMask, xK_h), sendMessage Shrink)                                                     --Shrink the master area
+	, ((modMask, xK_k), windows W.focusUp)                                 --Move focus to the previous window
+	, ((modMask, xK_a), windows W.focusMaster)                             --Move focus to the master window
+	, ((modMask .|. shiftMask, xK_a), windows W.swapMaster)                --Swap the focused window and the master window
+	, ((modMask .|. shiftMask, xK_j), windows W.swapDown)                  --Swap the focused window with the next window
+	, ((modMask .|. shiftMask, xK_k), windows W.swapUp)                    --Swap the focused window with the previous window
+	, ((modMask, xK_h), sendMessage Shrink)                                --Shrink the master area
 	, ((modMask .|. shiftMask, xK_Left), sendMessage Shrink)
-	, ((modMask, xK_l), sendMessage Expand)                                                     --Expand the master area
+	, ((modMask, xK_l), sendMessage Expand)                                --Expand the master area
 	, ((modMask .|. shiftMask, xK_Right), sendMessage Expand)
-	, ((modMask .|. shiftMask, xK_h), sendMessage MirrorShrink)                                 --MirrorShrink the master area
+	, ((modMask .|. shiftMask, xK_h), sendMessage MirrorShrink)            --MirrorShrink the master area
 	, ((modMask .|. shiftMask, xK_Down), sendMessage MirrorShrink)
-	, ((modMask .|. shiftMask, xK_l), sendMessage MirrorExpand)                                 --MirrorExpand the master area
+	, ((modMask .|. shiftMask, xK_l), sendMessage MirrorExpand)            --MirrorExpand the master area
 	, ((modMask .|. shiftMask, xK_Up), sendMessage MirrorExpand)
-	, ((modMask, xK_t), withFocused $ windows . W.sink)                                         --Push window back into tiling
-	, ((modMask .|. shiftMask, xK_t), rectFloatFocused)                                         --Push window into float
-	, ((modMask, xK_m), withFocused minimizeWindow)                                             --Minimize window
-	, ((modMask, xK_b), withFocused (sendMessage . maximizeRestore))                            --Maximize window
-	, ((modMask .|. shiftMask, xK_m), sendMessage RestoreNextMinimizedWin)                      --Restore window
-	, ((modMask .|. shiftMask, xK_f), fullFloatFocused)                                         --Push window into full screen
-	, ((modMask, xK_comma), sendMessage (IncMasterN 1))                                         --Increment the number of windows in the master area
-	, ((modMask, xK_period), sendMessage (IncMasterN (-1)))                                     --Deincrement the number of windows in the master area
-	, ((modMask, xK_Right), sendMessage $ Go R)                                                 --Change focus to right
-	, ((modMask, xK_Left ), sendMessage $ Go L)                                                 --Change focus to left
-	, ((modMask, xK_Up   ), sendMessage $ Go U)                                                 --Change focus to up
-	, ((modMask, xK_Down ), sendMessage $ Go D)                                                 --Change focus to down
-	, ((modMask .|. controlMask, xK_Right), sendMessage $ Swap R)                               --Swap focused window to right
-	, ((modMask .|. controlMask, xK_Left ), sendMessage $ Swap L)                               --Swap focused window to left
-	, ((modMask .|. controlMask, xK_Up   ), sendMessage $ Swap U)                               --Swap focused window to up
-	, ((modMask .|. controlMask, xK_Down ), sendMessage $ Swap D)                               --Swap focused window to down
+	, ((modMask, xK_t), withFocused $ windows . W.sink)                    --Push window back into tiling
+	, ((modMask .|. shiftMask, xK_t), rectFloatFocused)                    --Push window into float
+	, ((modMask, xK_m), withFocused minimizeWindow)                        --Minimize window
+	, ((modMask, xK_b), withFocused (sendMessage . maximizeRestore))       --Maximize window
+	, ((modMask .|. shiftMask, xK_m), sendMessage RestoreNextMinimizedWin) --Restore window
+	, ((modMask .|. shiftMask, xK_f), fullFloatFocused)                    --Push window into full screen
+	, ((modMask, xK_comma), sendMessage (IncMasterN 1))                    --Increment the number of windows in the master area
+	, ((modMask, xK_period), sendMessage (IncMasterN (-1)))                --Deincrement the number of windows in the master area
+	, ((modMask, xK_Right), sendMessage $ Go R)                            --Change focus to right
+	, ((modMask, xK_Left ), sendMessage $ Go L)                            --Change focus to left
+	, ((modMask, xK_Up   ), sendMessage $ Go U)                            --Change focus to up
+	, ((modMask, xK_Down ), sendMessage $ Go D)                            --Change focus to down
+	, ((modMask .|. controlMask, xK_Right), sendMessage $ Swap R)          --Swap focused window to right
+	, ((modMask .|. controlMask, xK_Left ), sendMessage $ Swap L)          --Swap focused window to left
+	, ((modMask .|. controlMask, xK_Up   ), sendMessage $ Swap U)          --Swap focused window to up
+	, ((modMask .|. controlMask, xK_Down ), sendMessage $ Swap D)          --Swap focused window to down
 	--Layout management bindings
-	, ((modMask, xK_space), sendMessage NextLayout)                                             --Rotate through the available layout algorithms
-	, ((modMask .|. shiftMask, xK_space ), setLayout $ XMonad.layoutHook conf)                  --Reset the layout on the current workspace to default
-	, ((modMask, xK_f), sendMessage $ XMonad.Layout.MultiToggle.Toggle TABBED)                  --Push layout into tabbed
-	, ((modMask .|. controlMask, xK_f), sendMessage $ XMonad.Layout.MultiToggle.Toggle FLOATED) --Push layout into float
-	, ((modMask .|. shiftMask, xK_z), sendMessage $ Toggle MIRROR)                              --Push layout into mirror
-	, ((modMask .|. shiftMask, xK_x), sendMessage $ XMonad.Layout.MultiToggle.Toggle REFLECTX)  --Reflect layout by X
-	, ((modMask .|. shiftMask, xK_y), sendMessage $ XMonad.Layout.MultiToggle.Toggle REFLECTY)  --Reflect layout by Y
+	, ((modMask, xK_space), sendMessage NextLayout)                                                                                    --Rotate through the available layout algorithms
+	, ((modMask .|. shiftMask, xK_space ), flashText myTextConfig 1 " Set to Default Layout " >> (setLayout $ XMonad.layoutHook conf)) --Reset layout to workspaces default
+	, ((modMask, xK_f), sendMessage $ XMonad.Layout.MultiToggle.Toggle TABBED)                                                         --Push layout into tabbed
+	, ((modMask .|. controlMask, xK_f), sendMessage $ XMonad.Layout.MultiToggle.Toggle FLOATED)                                        --Push layout into float
+	, ((modMask .|. shiftMask, xK_z), sendMessage $ Toggle MIRROR)                                                                     --Push layout into mirror
+	, ((modMask .|. shiftMask, xK_x), sendMessage $ XMonad.Layout.MultiToggle.Toggle REFLECTX)                                         --Reflect layout by X
+	, ((modMask .|. shiftMask, xK_y), sendMessage $ XMonad.Layout.MultiToggle.Toggle REFLECTY)                                         --Reflect layout by Y
 	--Gaps management bindings
-	, ((modMask .|. controlMask, xK_t), sendMessage $ ToggleGaps)                               --toogle all gaps
-	, ((modMask .|. controlMask, xK_u), sendMessage $ ToggleGap U)                              --toogle the top gap
-	, ((modMask .|. controlMask, xK_d), sendMessage $ ToggleGap D)                              --toogle the bottom gap
+	, ((modMask .|. controlMask, xK_t), sendMessage $ ToggleGaps)  --toogle all gaps
+	, ((modMask .|. controlMask, xK_u), sendMessage $ ToggleGap U) --toogle the top gap
+	, ((modMask .|. controlMask, xK_d), sendMessage $ ToggleGap D) --toogle the bottom gap
 	--Scripts management bindings
-	, ((modMask , xK_x), spawn "/usr/bin/xcalib -invert -alter")								--Invert colors in X
-	, ((modMask , xK_d), spawn "/usr/bin/killall dzen2")                                        --Kill dzen2
-	, ((0, xF86XK_AudioMute), spawn $ myBinPath ++ "voldzen.sh t -d")                           --Mute/unmute volume
-	, ((0, xF86XK_AudioRaiseVolume), spawn $ myBinPath ++ "voldzen.sh + -d")                    --Raise volume
+	, ((modMask , xK_x), spawn "/usr/bin/xcalib -invert -alter")                                                          --Invert colors in X
+	, ((modMask , xK_d), spawn "/usr/bin/killall dzen2")                                                                  --Kill dzen2
+	, ((0, xF86XK_AudioMute), spawn $ myBinPath ++ "voldzen.sh t -d")                                                     --Mute/unmute volume
+	, ((0, xF86XK_AudioRaiseVolume), spawn $ myBinPath ++ "voldzen.sh + -d")                                              --Raise volume
 	, ((mod1Mask, xK_Up), spawn $ myBinPath ++ "voldzen.sh + -d")
-	, ((0, xF86XK_AudioLowerVolume), spawn $ myBinPath ++ "voldzen.sh - -d")                    --Lower volume
+	, ((0, xF86XK_AudioLowerVolume), spawn $ myBinPath ++ "voldzen.sh - -d")                                              --Lower volume
 	, ((mod1Mask, xK_Down), spawn $ myBinPath ++ "voldzen.sh - -d")
-	, ((0, xF86XK_AudioNext), spawn "/usr/bin/ncmpcpp next")                                    --Next song
-	, ((mod1Mask, xK_Right), spawn "/usr/bin/ncmpcpp next")
-	, ((0, xF86XK_AudioPrev), spawn "/usr/bin/ncmpcpp prev")                                    --Prev song
-	, ((mod1Mask, xK_Left), spawn "/usr/bin/ncmpcpp prev")
-	, ((0, xF86XK_AudioPlay), spawn "/usr/bin/ncmpcpp toggle")                                  --Toggle song
-	, ((mod1Mask .|. controlMask, xK_Down), spawn "/usr/bin/ncmpcpp toggle")
-	, ((0, xF86XK_AudioStop), spawn "/usr/bin/ncmpcpp stop")                                    --Stop song
-	, ((mod1Mask .|. controlMask, xK_Up), spawn "ncmpcpp stop")
-	, ((0, xF86XK_MonBrightnessUp), spawn $ myBinPath ++ "bridzen.sh")                          --Raise brightness
-	, ((0, xF86XK_MonBrightnessDown), spawn $ myBinPath ++ "bridzen.sh")                        --Lower brightness
-	, ((0, xF86XK_ScreenSaver), spawn $ myBinPath ++ "turnoffscreen.sh")                        --Lock screen
-	, ((0, xK_Print), spawn "/usr/bin/scrot '%Y-%m-%d_$wx$h.png'")                              --Take a screenshot
-	, ((modMask , xK_s), spawn $ myBinPath ++ "turnoffscreen.sh")                               --Turn off screen
+	, ((0, xF86XK_AudioNext),  flashText myTextConfig 1 " Next Song " >> spawn "/usr/bin/ncmpcpp next")                   --Next song
+	, ((mod1Mask, xK_Right), flashText myTextConfig 1 " Next Song " >> spawn "/usr/bin/ncmpcpp next")
+	, ((0, xF86XK_AudioPrev), flashText myTextConfig 1 " Previous Song " >> spawn "/usr/bin/ncmpcpp prev")                --Prev song
+	, ((mod1Mask, xK_Left), flashText myTextConfig 1 " Previous Song " >> spawn "/usr/bin/ncmpcpp prev")
+	, ((0, xF86XK_AudioPlay), flashText myTextConfig 1 " Song Toggled " >> spawn "/usr/bin/ncmpcpp toggle")               --Toggle song
+	, ((mod1Mask .|. controlMask, xK_Down), flashText myTextConfig 1 " Song Toggled " >> spawn "/usr/bin/ncmpcpp toggle")
+	, ((0, xF86XK_AudioStop), flashText myTextConfig 1 " Song Stopped " >> spawn "/usr/bin/ncmpcpp stop")                 --Stop song
+	, ((mod1Mask .|. controlMask, xK_Up), flashText myTextConfig 1 " Song Stopped " >> spawn "ncmpcpp stop")
+	, ((0, xF86XK_MonBrightnessUp), spawn $ myBinPath ++ "bridzen.sh")                                                    --Raise brightness
+	, ((0, xF86XK_MonBrightnessDown), spawn $ myBinPath ++ "bridzen.sh")                                                  --Lower brightness
+	, ((0, xF86XK_ScreenSaver), spawn $ myBinPath ++ "turnoffscreen.sh")                                                  --Lock screen
+	, ((0, xK_Print), spawn "/usr/bin/scrot '%Y-%m-%d_$wx$h.png'")                                                        --Take a screenshot
+	, ((modMask , xK_s), spawn $ myBinPath ++ "turnoffscreen.sh")                                                         --Turn off screen
 	--Workspaces management bindings
-	, ((mod1Mask, xK_comma), toggleWS)                                                          --Toggle to the workspace displayed previously
-	, ((mod1Mask, xK_masculine), toggleOrView (myWorkspaces !! 0))                              --If ws != 0 then move to workspace 0, else move to latest ws I was
-	, ((mod1Mask .|. controlMask, xK_Left),  prevWS)                                            --Move to previous Workspace
-	, ((mod1Mask .|. controlMask, xK_Right), nextWS)                                            --Move to next Workspace
-	, ((modMask .|. shiftMask, xK_n), shiftToNext)                                              --Send client to next workspace
-	, ((modMask .|. shiftMask, xK_p), shiftToPrev)                                              --Send client to previous workspace
+	, ((mod1Mask, xK_comma), flashText myTextConfig 1 " Toggled to Previous Workspace " >> toggleWS)                          --Toggle to the workspace displayed previously
+	, ((mod1Mask, xK_masculine), flashText myTextConfig 1 " Switching with Workspace 1 " >> toggleOrView (myWorkspaces !! 0)) --If ws != 0 then move to workspace 0, else move to latest ws I was
+	, ((mod1Mask .|. controlMask, xK_Left), flashText myTextConfig 1 " Moved to Previous Workspace " >> prevWS)               --Move to previous Workspace
+	, ((mod1Mask .|. controlMask, xK_Right), flashText myTextConfig 1 " Moved to Next Workspace " >> nextWS)                  --Move to next Workspace
+	, ((modMask .|. shiftMask, xK_n), flashText myTextConfig 1 " Shifted to Next Workspace " >> shiftToNext)                  --Send client to next workspace
+	, ((modMask .|. shiftMask, xK_p), flashText myTextConfig 1 " Shifted to Previous Workspace " >> shiftToPrev)              --Send client to previous workspace
 	]
 	++
 	[((m .|. modMask, k), windows $ f i)                                                        --Switch to n workspaces and send client to n workspaces
