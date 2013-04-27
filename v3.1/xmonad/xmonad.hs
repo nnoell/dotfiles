@@ -90,7 +90,7 @@ main = do
 		, handleEventHook    = myHandleEventHook
 		, keys               = myKeys
 		, mouseBindings      = myMouseBindings
-		, startupHook        = (startTimer 1 >>= XS.put . TID) <+> setDefaultCursor xC_left_ptr >> setWMName "LG3D"
+		, startupHook        = setDefaultCursor xC_left_ptr <+> (startTimer 1 >>= XS.put . TID)
 		}
 		`additionalKeysP`
 		[ ("<XF86TouchpadToggle>", spawn $ myBinPath ++ "touchpadtoggle.sh") --because xF86XK_TouchpadToggle doesnt exist
@@ -249,7 +249,7 @@ instance ExtensionClass TidState where
 
 -- Handle event hook
 myHandleEventHook :: (?focusFollow::IORef Bool) => Event -> X All
-myHandleEventHook = fullscreenEventHook <+> docksEventHook <+> toggleFocus <+> clockEventHook <+> handleTimerEvent
+myHandleEventHook = fullscreenEventHook <+> docksEventHook <+> clockEventHook <+> handleTimerEvent <+> toggleFocus
 	where
 		toggleFocus e = case e of --thanks to Vgot
 			CrossingEvent {ev_window=w, ev_event_type=t}
@@ -369,7 +369,8 @@ loggerText t = return $ return t
 readWithE :: FilePath -> String -> String -> IO String
 readWithE p e c = E.catch (do
 	contents <- readFile p
-	return $ (init contents) ++ c ) ((\_ -> return e) :: E.SomeException -> IO String) --init removes \n from contents
+	let check x = if (null x) then (e ++ "\n") else x --if file is empty
+	return $ (init $ check contents) ++ c ) ((\_ -> return e) :: E.SomeException -> IO String)
 
 batPercent :: Logger
 batPercent = do
@@ -385,7 +386,7 @@ wifiSignal :: Logger
 wifiSignal = do
 	signalContent <- liftIO $ readWithE "/proc/net/wireless" "N/A" ""
 	let signalLines = lines signalContent
-	let signal = if (length signalLines) >= 3 then (init ((words (signalLines !! 2)) !! 2) ++ "%") else "Off"
+	    signal = if (length signalLines) >= 3 then (init ((words (signalLines !! 2)) !! 2) ++ "%") else "Off"
 	return $ return signal
 
 cpuTemp :: Logger
@@ -400,12 +401,12 @@ memUsage :: Logger
 memUsage = do
 	memInfo <- liftIO $ readWithE "/proc/meminfo" "N/A" ""
 	let memInfoLines = lines memInfo
-	let memTotal = read (words (memInfoLines !! 0) !! 1)::Int
-	let memFree  = read (words (memInfoLines !! 1) !! 1)::Int
-	let buffers  = read (words (memInfoLines !! 2) !! 1)::Int
-	let cached   = read (words (memInfoLines !! 3) !! 1)::Int
-	let used     = memTotal - (buffers + cached + memFree)
-	let perc     = div ((memTotal - (buffers + cached + memFree)) * 100) memTotal
+	    memTotal = read (words (memInfoLines !! 0) !! 1)::Int
+	    memFree  = read (words (memInfoLines !! 1) !! 1)::Int
+	    buffers  = read (words (memInfoLines !! 2) !! 1)::Int
+	    cached   = read (words (memInfoLines !! 3) !! 1)::Int
+	    used     = memTotal - (buffers + cached + memFree)
+	    perc     = div ((memTotal - (buffers + cached + memFree)) * 100) memTotal
 	return $ return $ (show perc) ++ "% " ++ (show $ div used 1024) ++ "MB"
 
 -- This is an ugly hack that depends on cpuUsage.sh script
@@ -421,10 +422,10 @@ uptime :: Logger
 uptime = do
 	uptime <- liftIO $ readWithE "/proc/uptime" "0" ""
 	let u  = read (takeWhile (/='.') uptime )::Integer
-	let h  = div u 3600
-	let hr = mod u 3600
-	let m  = div hr 60
-	let s  = mod hr 60
+	    h  = div u 3600
+	    hr = mod u 3600
+	    m  = div hr 60
+	    s  = mod hr 60
 	return $ return $ (show h) ++ "h " ++ (show m) ++ "m " ++ (show s) ++ "s"
 
 
