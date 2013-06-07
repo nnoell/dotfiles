@@ -157,8 +157,8 @@ memUsage = do
 cpuUsage :: String -> Logger
 cpuUsage path = do
 	cpus <- liftIO $ readWithE path "N/A" ""
-	let str = init $ concat $ map (++"% ") $ tail $ words cpus
-	return $ return $ str
+	let str = concat $ map (++"% ") $ tail $ words cpus
+	return $ return $ if (null str) then "" else init str
 
 -- Uptime Logger
 uptime :: Logger
