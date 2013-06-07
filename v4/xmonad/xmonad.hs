@@ -75,10 +75,7 @@ import DzenBoxLoggers
 -- Main
 main :: IO ()
 main = do
-	spawn "/home/nnoell/bin/cpuUsage.sh 0"
-	spawn "/home/nnoell/bin/cpuUsage.sh 1"
-	spawn "/home/nnoell/bin/cpuUsage.sh 2"
-	spawn "/home/nnoell/bin/cpuUsage.sh 3"
+	spawn "/home/nnoell/.xmonad/apps/haskell-cpu-usage.out 5" --launch haskell-cpu-usage app (4 cores). See my github repo to get the app.
 	topLeftBar              <- spawnPipe myTopLeftBar
 	topRightBar             <- spawnPipe myTopRightBar
 	botLeftBar              <- spawnPipe myBotLeftBar
@@ -425,7 +422,9 @@ myManageHook = composeAll . concat $
 
 -- UrgencyHook
 myUrgencyHook = withUrgencyHook dzenUrgencyHook
-	{ args = ["-fn", dzenFont, "-bg", colorBlack, "-fg", colorGreen, "-h", show panelHeight] }
+	{ duration = 2000000
+	, args     = ["-x", "0", "-y", "0", "-h", show panelHeight, "-w", show topPanelSepPos, "-fn", dzenFont, "-bg", colorBlack, "-fg", colorGreen]
+	}
 
 -- botLeftBar
 myBotLeftBar = "dzen2 -x 0 -y " ++ show (yRes - panelHeight) ++ " -h " ++ show panelHeight ++ " -w " ++ show botPanelSepPos ++ " -ta 'l' -fg '" ++ colorWhiteAlt ++ "' -bg '" ++ colorBlack ++ "' -fn '" ++ dzenFont ++ "' -p -e 'onstart=lower'"
@@ -489,17 +488,17 @@ myLogHook3 h = dynamicLogWithPP $ defaultPP
 --------------------------------------------------------------------------------------------
 
 myBatL       = (dzenBoxStyleL grayBoxPP $ labelL "BATTERY") ++! (dzenBoxStyleL blueBoxPP batPercent) ++! (dzenBoxStyleL whiteBoxPP batStatus)
-myWifiL      = (dzenBoxStyleL grayBoxPP $ labelL "WIFI")    ++! (dzenBoxStyleL blueBoxPP wifiSignal)
-myBrightL    = (dzenBoxStyleL grayBoxPP $ labelL "BRIGHT")  ++! (dzenBoxStyleL blueBoxPP brightPerc)
-myTempL      = (dzenBoxStyleL grayBoxPP $ labelL "TEMP")    ++! (dzenBoxStyleL blueBoxPP cpuTemp)
-myMemL       = (dzenBoxStyleL grayBoxPP $ labelL "MEM")     ++! (dzenBoxStyleL blueBoxPP memUsage)
-myCpuL       = (dzenBoxStyleL grayBoxPP $ labelL "CPU")     ++! (dzenBoxStyleL blueBoxPP cpuUsage)
+myWifiL      = (dzenBoxStyleL grayBoxPP $ labelL "WIFI") ++! (dzenBoxStyleL blueBoxPP wifiSignal)
+myBrightL    = (dzenBoxStyleL grayBoxPP $ labelL "BRIGHT") ++! (dzenBoxStyleL blueBoxPP brightPerc)
+myTempL      = (dzenBoxStyleL grayBoxPP $ labelL "TEMP") ++! (dzenBoxStyleL blueBoxPP cpuTemp)
+myMemL       = (dzenBoxStyleL grayBoxPP $ labelL "MEM") ++! (dzenBoxStyleL blueBoxPP memUsage)
+myCpuL       = (dzenBoxStyleL grayBoxPP $ labelL "CPU") ++! (dzenBoxStyleL blueBoxPP $ cpuUsage "/tmp/haskell-cpu-usage.txt")
 myFsL        = (dzenBoxStyleL blueBoxPP $ labelL "ROOT") ++! (dzenBoxStyleL whiteBoxPP $ fsPerc "/") ++! (dzenBoxStyleL blueBoxPP $ labelL "HOME") ++! (dzenBoxStyleL whiteBoxPP $ fsPerc "/home")
 myCalL       = (dzenClickStyleL calendarCA $ dzenBoxStyleL blueBoxPP $ labelL "CALENDAR")
 myDateL      = (dzenBoxStyleL whiteBBoxPP $ date "%A") ++! (dzenBoxStyleL whiteBoxPP $ date $ "%Y^fg(" ++ colorGray ++ ").^fg()%m^fg(" ++ colorGray ++ ").^fg()^fg(" ++ colorBlue ++ ")%d^fg() ^fg(" ++ colorGray ++ ")-^fg() %H^fg(" ++ colorGray ++ "):^fg()%M^fg(" ++ colorGray ++ "):^fg()^fg(" ++ colorGreen ++ ")%S^fg()")
 myUptimeL    = (dzenBoxStyleL blueBoxPP $ labelL "UPTIME") ++! (dzenBoxStyleL whiteBoxPP uptime)
-myFocusL     = (dzenClickStyleL focusCA $ dzenBoxStyleL whiteBBoxPP $ labelL "FOCUS")       ++! (dzenBoxStyleL whiteBoxPP $ shortenL 100 logTitle)
-myLayoutL    = (dzenClickStyleL layoutCA $ dzenBoxStyleL blueBoxPP $ labelL "LAYOUT")       ++! (dzenBoxStyleL whiteBoxPP $ onLogger (layoutText . removeWord . removeWord) logLayout)
+myFocusL     = (dzenClickStyleL focusCA $ dzenBoxStyleL whiteBBoxPP $ labelL "FOCUS") ++! (dzenBoxStyleL whiteBoxPP $ shortenL 100 logTitle)
+myLayoutL    = (dzenClickStyleL layoutCA $ dzenBoxStyleL blueBoxPP $ labelL "LAYOUT") ++! (dzenBoxStyleL whiteBoxPP $ onLogger (layoutText . removeWord . removeWord) logLayout)
 	where
 		removeWord = tail . dropWhile (/= ' ')
 		layoutText xs

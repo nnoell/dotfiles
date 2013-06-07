@@ -153,14 +153,12 @@ memUsage = do
 	return $ return $ (show perc) ++ "% " ++ (show $ div used 1024) ++ "MB"
 
 
--- CPU Usage Logger: this is an ugly hack that depends on cpuUsage.sh script
-cpuUsage :: Logger
-cpuUsage = do
-	cpu0 <- liftIO $ readWithE "/tmp/cpuUsage0" "0" "%"
-	cpu1 <- liftIO $ readWithE "/tmp/cpuUsage1" "0" "%"
-	cpu2 <- liftIO $ readWithE "/tmp/cpuUsage2" "0" "%"
-	cpu3 <- liftIO $ readWithE "/tmp/cpuUsage3" "0" "%"
-	return $ return $ cpu0 ++ " " ++ cpu1 ++ " " ++ cpu2 ++ " " ++ cpu3
+-- CPU Usage Logger: this is an ugly hack that depends on "haskell-cpu-usage" app. See my github repo to get the app.
+cpuUsage :: String -> Logger
+cpuUsage path = do
+	cpus <- liftIO $ readWithE path "N/A" ""
+	let str = init $ concat $ map (++"% ") $ tail $ words cpus
+	return $ return $ str
 
 -- Uptime Logger
 uptime :: Logger
