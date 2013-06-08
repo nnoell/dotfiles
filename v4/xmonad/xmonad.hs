@@ -123,6 +123,7 @@ colorRedAlt          = "#e0105f"
 colorGreen           = "#66ff66"
 colorGreenAlt        = "#558965"
 boxLeftIcon          = "/home/nnoell/.icons/xbm_icons/subtle/boxleft.xbm"  -- left icon of dzen logger boxes
+boxLeftIcon2         = "/home/nnoell/.icons/xbm_icons/subtle/boxleft2.xbm"  -- left icon2 of dzen logger boxes
 boxRightIcon         = "/home/nnoell/.icons/xbm_icons/subtle/boxright.xbm" -- right icon of dzen logger boxes
 xRes                 = 1366
 yRes                 = 768
@@ -190,11 +191,11 @@ myTextConfig = STC
     }
 
 -- Dzen logger box pretty printing themes
-grayBoxPP :: BoxPP
-grayBoxPP = BoxPP { bgColorBPP   = colorBlack
+gray2BoxPP :: BoxPP
+gray2BoxPP = BoxPP { bgColorBPP   = colorBlack
 				  , fgColorBPP   = colorGray
 				  , boxColorBPP  = colorGrayAlt
-				  , leftIconBPP  = boxLeftIcon
+				  , leftIconBPP  = boxLeftIcon2
 				  , rightIconBPP = boxRightIcon
 				  , boxHeightBPP = boxHeight
 				  }
@@ -207,6 +208,16 @@ blueBoxPP = BoxPP { bgColorBPP   = colorBlack
 				  , rightIconBPP = boxRightIcon
 				  , boxHeightBPP = boxHeight
 				  }
+
+blue2BoxPP :: BoxPP
+blue2BoxPP = BoxPP { bgColorBPP   = colorBlack
+				   , fgColorBPP   = colorBlue
+				   , boxColorBPP  = colorGrayAlt
+				   , leftIconBPP  = boxLeftIcon2
+				   , rightIconBPP = boxRightIcon
+				   , boxHeightBPP = boxHeight
+				   }
+
 
 whiteBoxPP :: BoxPP
 whiteBoxPP = BoxPP { bgColorBPP   = colorBlack
@@ -226,32 +237,32 @@ blackBoxPP = BoxPP { bgColorBPP   = colorBlack
 				   , boxHeightBPP = boxHeight
 				   }
 
-whiteBBoxPP :: BoxPP
-whiteBBoxPP = BoxPP { bgColorBPP   = colorBlack
+white2BBoxPP :: BoxPP
+white2BBoxPP = BoxPP { bgColorBPP   = colorBlack
+					 , fgColorBPP   = colorBlack
+					 , boxColorBPP  = colorWhiteAlt
+					 , leftIconBPP  = boxLeftIcon2
+					 , rightIconBPP = boxRightIcon
+					 , boxHeightBPP = boxHeight
+					 }
+
+blue2BBoxPP :: BoxPP -- current workspace
+blue2BBoxPP = BoxPP { bgColorBPP   = colorBlack
 					, fgColorBPP   = colorBlack
-					, boxColorBPP  = colorWhiteAlt
-					, leftIconBPP  = boxLeftIcon
+					, boxColorBPP  = colorBlue
+					, leftIconBPP  = boxLeftIcon2
 					, rightIconBPP = boxRightIcon
 					, boxHeightBPP = boxHeight
 					}
 
-blueBBoxPP :: BoxPP -- current workspace
-blueBBoxPP = BoxPP { bgColorBPP   = colorBlack
-				   , fgColorBPP   = colorBlack
-				   , boxColorBPP  = colorBlue
-				   , leftIconBPP  = boxLeftIcon
-				   , rightIconBPP = boxRightIcon
-				   , boxHeightBPP = boxHeight
-				   }
-
-greenBBoxPP :: BoxPP -- urgent workspace
-greenBBoxPP = BoxPP { bgColorBPP   = colorBlack
-					, fgColorBPP   = colorBlack
-					, boxColorBPP  = colorGreen
-					, leftIconBPP  = boxLeftIcon
-					, rightIconBPP = boxRightIcon
-					, boxHeightBPP = boxHeight
-					}
+green2BBoxPP :: BoxPP -- urgent workspace
+green2BBoxPP = BoxPP { bgColorBPP   = colorBlack
+					 , fgColorBPP   = colorBlack
+					 , boxColorBPP  = colorGreen
+					 , leftIconBPP  = boxLeftIcon2
+					 , rightIconBPP = boxRightIcon
+					 , boxHeightBPP = boxHeight
+					 }
 
 -- Dzen logger clickable areas
 calendarCA :: CA
@@ -435,8 +446,8 @@ myLogHook h = dynamicLogWithPP $ defaultPP
 	, ppOrder           = \(ws:l:_:x) -> [ws] ++ x
 	, ppSep             = " "
 	, ppWsSep           = ""
-	, ppCurrent         = dzenBoxStyle blueBBoxPP
-	, ppUrgent          = dzenBoxStyle greenBBoxPP . dzenClickWorkspace
+	, ppCurrent         = dzenBoxStyle blue2BBoxPP
+	, ppUrgent          = dzenBoxStyle green2BBoxPP . dzenClickWorkspace
 	, ppVisible         = dzenBoxStyle blackBoxPP  . dzenClickWorkspace
 	, ppHiddenNoWindows = dzenBoxStyle blackBoxPP  . dzenClickWorkspace
 	, ppHidden          = dzenBoxStyle whiteBoxPP  . dzenClickWorkspace
@@ -479,7 +490,7 @@ myLogHook3 h = dynamicLogWithPP $ defaultPP
 	{ ppOutput          = hPutStrLn h
 	, ppOrder           = \(_:_:_:x) -> x
 	, ppSep             = " "
-	, ppExtras          = [ myUptimeL, myDateL, myCalL ]
+	, ppExtras          = [ myUptimeL, myDateL ]
 	}
 
 
@@ -487,18 +498,17 @@ myLogHook3 h = dynamicLogWithPP $ defaultPP
 -- LOGGERS CONFIG                                                                         --
 --------------------------------------------------------------------------------------------
 
-myBatL       = (dzenBoxStyleL grayBoxPP $ labelL "BATTERY") ++! (dzenBoxStyleL blueBoxPP batPercent) ++! (dzenBoxStyleL whiteBoxPP batStatus)
-myWifiL      = (dzenBoxStyleL grayBoxPP $ labelL "WIFI") ++! (dzenBoxStyleL blueBoxPP wifiSignal)
-myBrightL    = (dzenBoxStyleL grayBoxPP $ labelL "BRIGHT") ++! (dzenBoxStyleL blueBoxPP brightPerc)
-myTempL      = (dzenBoxStyleL grayBoxPP $ labelL "TEMP") ++! (dzenBoxStyleL blueBoxPP cpuTemp)
-myMemL       = (dzenBoxStyleL grayBoxPP $ labelL "MEM") ++! (dzenBoxStyleL blueBoxPP memUsage)
-myCpuL       = (dzenBoxStyleL grayBoxPP $ labelL "CPU") ++! (dzenBoxStyleL blueBoxPP $ cpuUsage "/tmp/haskell-cpu-usage.txt")
-myFsL        = (dzenBoxStyleL blueBoxPP $ labelL "ROOT") ++! (dzenBoxStyleL whiteBoxPP $ fsPerc "/") ++! (dzenBoxStyleL blueBoxPP $ labelL "HOME") ++! (dzenBoxStyleL whiteBoxPP $ fsPerc "/home")
-myCalL       = (dzenClickStyleL calendarCA $ dzenBoxStyleL blueBoxPP $ labelL "CALENDAR")
-myDateL      = (dzenBoxStyleL whiteBBoxPP $ date "%A") ++! (dzenBoxStyleL whiteBoxPP $ date $ "%Y^fg(" ++ colorGray ++ ").^fg()%m^fg(" ++ colorGray ++ ").^fg()^fg(" ++ colorBlue ++ ")%d^fg() ^fg(" ++ colorGray ++ ")-^fg() %H^fg(" ++ colorGray ++ "):^fg()%M^fg(" ++ colorGray ++ "):^fg()^fg(" ++ colorGreen ++ ")%S^fg()")
-myUptimeL    = (dzenBoxStyleL blueBoxPP $ labelL "UPTIME") ++! (dzenBoxStyleL whiteBoxPP uptime)
-myFocusL     = (dzenClickStyleL focusCA $ dzenBoxStyleL whiteBBoxPP $ labelL "FOCUS") ++! (dzenBoxStyleL whiteBoxPP $ shortenL 100 logTitle)
-myLayoutL    = (dzenClickStyleL layoutCA $ dzenBoxStyleL blueBoxPP $ labelL "LAYOUT") ++! (dzenBoxStyleL whiteBoxPP $ onLogger (layoutText . removeWord . removeWord) logLayout)
+myBatL       = (dzenBoxStyleL gray2BoxPP $ labelL "BATTERY") ++! (dzenBoxStyleL blueBoxPP batPercent) ++! (dzenBoxStyleL whiteBoxPP batStatus)
+myWifiL      = (dzenBoxStyleL gray2BoxPP $ labelL "WIFI") ++! (dzenBoxStyleL blueBoxPP wifiSignal)
+myBrightL    = (dzenBoxStyleL gray2BoxPP $ labelL "BRIGHT") ++! (dzenBoxStyleL blueBoxPP brightPerc)
+myTempL      = (dzenBoxStyleL gray2BoxPP $ labelL "TEMP") ++! (dzenBoxStyleL blueBoxPP cpuTemp)
+myMemL       = (dzenBoxStyleL gray2BoxPP $ labelL "MEM") ++! (dzenBoxStyleL blueBoxPP memUsage)
+myCpuL       = (dzenBoxStyleL gray2BoxPP $ labelL "CPU") ++! (dzenBoxStyleL blueBoxPP $ cpuUsage "/tmp/haskell-cpu-usage.txt")
+myFsL        = (dzenBoxStyleL blue2BoxPP $ labelL "ROOT") ++! (dzenBoxStyleL whiteBoxPP $ fsPerc "/") ++! (dzenBoxStyleL blueBoxPP $ labelL "HOME") ++! (dzenBoxStyleL whiteBoxPP $ fsPerc "/home")
+myDateL      = (dzenBoxStyleL white2BBoxPP $ date "%A") ++! (dzenBoxStyleL whiteBoxPP $ date $ "%Y^fg(" ++ colorGray ++ ").^fg()%m^fg(" ++ colorGray ++ ").^fg()^fg(" ++ colorBlue ++ ")%d^fg() ^fg(" ++ colorGray ++ ")-^fg() %H^fg(" ++ colorGray ++ "):^fg()%M^fg(" ++ colorGray ++ "):^fg()^fg(" ++ colorGreen ++ ")%S^fg()") ++! (dzenClickStyleL calendarCA $ dzenBoxStyleL blueBoxPP $ labelL "CALENDAR")
+myUptimeL    = (dzenBoxStyleL blue2BoxPP $ labelL "UPTIME") ++! (dzenBoxStyleL whiteBoxPP uptime)
+myFocusL     = (dzenClickStyleL focusCA $ dzenBoxStyleL white2BBoxPP $ labelL "FOCUS") ++! (dzenBoxStyleL whiteBoxPP $ shortenL 100 logTitle)
+myLayoutL    = (dzenClickStyleL layoutCA $ dzenBoxStyleL blue2BoxPP $ labelL "LAYOUT") ++! (dzenBoxStyleL whiteBoxPP $ onLogger (layoutText . removeWord . removeWord) logLayout)
 	where
 		removeWord = tail . dropWhile (/= ' ')
 		layoutText xs
@@ -508,7 +518,7 @@ myLayoutL    = (dzenClickStyleL layoutCA $ dzenBoxStyleL blueBoxPP $ labelL "LAY
 			| isPrefixOf "Simple Float" xs = "^fg(" ++ colorRed ++ ")" ++ xs
 			| isPrefixOf "Full Tabbed" xs  = "^fg(" ++ colorGreen ++ ")" ++ xs
 			| otherwise                    = "^fg(" ++ colorWhiteAlt ++ ")" ++ xs
-myWorkspaceL = (dzenClickStyleL workspaceCA $ dzenBoxStyleL blueBoxPP $ labelL "WORKSPACE") ++! (dzenBoxStyleL whiteBoxPP $ onLogger namedWorkspaces logCurrent)
+myWorkspaceL = (dzenClickStyleL workspaceCA $ dzenBoxStyleL blue2BoxPP $ labelL "WORKSPACE") ++! (dzenBoxStyleL whiteBoxPP $ onLogger namedWorkspaces logCurrent)
 	where
 		namedWorkspaces w
 			| w == "1"  = "^fg(" ++ colorGreen ++ ")1^fg(" ++ colorGray ++ ")|^fg()Terminal"
@@ -590,11 +600,11 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 	, ((modMask .|. controlMask, xK_d), sendMessage $ ToggleGap D) --toogle the bottom gap
 	--Scripts management bindings
 	, ((modMask , xK_x), spawn "/usr/bin/xcalib -invert -alter")                                                          --Invert colors in X
-	, ((modMask , xK_d), spawn "/usr/bin/killall dzen2")                                                                  --Kill dzen2
-	, ((0, xF86XK_AudioMute), spawn "/home/nnoell/bin/voldzen.sh t -d")                                                     --Mute/unmute volume
-	, ((0, xF86XK_AudioRaiseVolume), spawn "/home/nnoell/bin/voldzen.sh + -d")                                              --Raise volume
+	, ((modMask , xK_d), spawn "/usr/bin/killall dzen2 haskell-cpu-usage.out")                                            --Kill dzen2
+	, ((0, xF86XK_AudioMute), spawn "/home/nnoell/bin/voldzen.sh t -d")                                                   --Mute/unmute volume
+	, ((0, xF86XK_AudioRaiseVolume), spawn "/home/nnoell/bin/voldzen.sh + -d")                                            --Raise volume
 	, ((mod1Mask, xK_Up), spawn "/home/nnoell/bin/voldzen.sh + -d")
-	, ((0, xF86XK_AudioLowerVolume), spawn "/home/nnoell/bin/voldzen.sh - -d")                                              --Lower volume
+	, ((0, xF86XK_AudioLowerVolume), spawn "/home/nnoell/bin/voldzen.sh - -d")                                            --Lower volume
 	, ((mod1Mask, xK_Down), spawn "/home/nnoell/bin/voldzen.sh - -d")
 	, ((0, xF86XK_AudioNext),  flashText myTextConfig 1 " Next Song " >> spawn "/usr/bin/ncmpcpp next")                   --Next song
 	, ((mod1Mask, xK_Right), flashText myTextConfig 1 " Next Song " >> spawn "/usr/bin/ncmpcpp next")
@@ -604,11 +614,11 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 	, ((mod1Mask .|. controlMask, xK_Down), flashText myTextConfig 1 " Song Toggled " >> spawn "/usr/bin/ncmpcpp toggle")
 	, ((0, xF86XK_AudioStop), flashText myTextConfig 1 " Song Stopped " >> spawn "/usr/bin/ncmpcpp stop")                 --Stop song
 	, ((mod1Mask .|. controlMask, xK_Up), flashText myTextConfig 1 " Song Stopped " >> spawn "ncmpcpp stop")
-	, ((0, xF86XK_MonBrightnessUp), spawn "/home/nnoell/bin/bridzen.sh")                                                    --Raise brightness
-	, ((0, xF86XK_MonBrightnessDown), spawn "/home/nnoell/bin/bridzen.sh")                                                  --Lower brightness
-	, ((0, xF86XK_ScreenSaver), spawn "/home/nnoell/bin/turnoffscreen.sh")                                                  --Lock screen
+	, ((0, xF86XK_MonBrightnessUp), spawn "/home/nnoell/bin/bridzen.sh")                                                  --Raise brightness
+	, ((0, xF86XK_MonBrightnessDown), spawn "/home/nnoell/bin/bridzen.sh")                                                --Lower brightness
+	, ((0, xF86XK_ScreenSaver), spawn "/home/nnoell/bin/turnoffscreen.sh")                                                --Lock screen
 	, ((0, xK_Print), spawn "/usr/bin/scrot '%Y-%m-%d_$wx$h.png'")                                                        --Take a screenshot
-	, ((modMask , xK_s), spawn "/home/nnoell/bin/turnoffscreen.sh")                                                         --Turn off screen
+	, ((modMask , xK_s), spawn "/home/nnoell/bin/turnoffscreen.sh")                                                       --Turn off screen
 	--Workspaces management bindings
 	, ((mod1Mask, xK_comma), flashText myTextConfig 1 " Toggled to Previous Workspace " >> toggleWS)                          --Toggle to the workspace displayed previously
 	, ((mod1Mask, xK_masculine), flashText myTextConfig 1 " Switching with Workspace 1 " >> toggleOrView (myWorkspaces !! 0)) --If ws != 0 then move to workspace 0, else move to latest ws I was
