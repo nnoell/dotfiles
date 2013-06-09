@@ -10,14 +10,12 @@
 --------------------------------------------------------------------------------------------
 
 -- Language
-{-# LANGUAGE DeriveDataTypeable, NoMonomorphismRestriction, TypeSynonymInstances, MultiParamTypeClasses,  ImplicitParams, PatternGuards #-}
+{-# LANGUAGE DeriveDataTypeable, NoMonomorphismRestriction, MultiParamTypeClasses, ImplicitParams #-}
 
 -- Modules
 import XMonad
-import XMonad.Core
 import XMonad.Layout
 import XMonad.Layout.IM
-import XMonad.Layout.Gaps
 import XMonad.Layout.Named
 import XMonad.Layout.Tabbed
 import XMonad.Layout.OneBig
@@ -33,8 +31,9 @@ import XMonad.Layout.MultiToggle.Instances
 import XMonad.Layout.PerWorkspace (onWorkspace)
 import XMonad.Layout.Minimize
 import XMonad.Layout.Maximize
+import XMonad.Layout.MagicFocus
 import XMonad.Layout.WindowNavigation
-import XMonad.StackSet (RationalRect (..), currentTag)
+import XMonad.StackSet (RationalRect(..), currentTag)
 import XMonad.Hooks.DynamicLog
 import XMonad.Hooks.DynamicHooks
 import XMonad.Hooks.ManageDocks
@@ -49,7 +48,6 @@ import XMonad.Prompt.Man
 import XMonad.Util.Timer
 import XMonad.Util.Cursor
 import XMonad.Util.Loggers
-import XMonad.Util.EZConfig
 import XMonad.Util.Run (spawnPipe)
 import XMonad.Util.Scratchpad
 import XMonad.Util.NamedScratchpad
@@ -57,7 +55,6 @@ import XMonad.Actions.CycleWS
 import XMonad.Actions.ShowText
 import XMonad.Actions.GridSelect
 import XMonad.Actions.MouseResize
-import Data.IORef
 import Data.Monoid
 import Data.List
 import Graphics.X11.ExtraTypes.XF86
@@ -75,32 +72,27 @@ import DzenBoxLoggers
 -- Main
 main :: IO ()
 main = do
-	spawn "/home/nnoell/.xmonad/apps/haskell-cpu-usage.out 5" --launch haskell-cpu-usage app (4 cores). See my github repo to get the app.
-	topLeftBar              <- spawnPipe myTopLeftBar
-	topRightBar             <- spawnPipe myTopRightBar
-	botLeftBar              <- spawnPipe myBotLeftBar
-	botRightBar             <- spawnPipe myBotRightBar
-	focusFollow             <- newIORef True; let ?focusFollow = focusFollow
+	spawn "/home/nnoell/.xmonad/apps/haskell-cpu-usage.out 5" --launch haskell-cpu-usage app (See my github repo to get the app)
+	topLeftBar  <- spawnPipe $ dzenFlagsToStr dzenTopLeftFlags
+	topRightBar <- spawnPipe $ dzenFlagsToStr dzenTopRightFlags
+	botLeftBar  <- spawnPipe $ dzenFlagsToStr dzenBotLeftFlags
+	botRightBar <- spawnPipe $ dzenFlagsToStr dzenBotRightFlags
 	xmonad $ myUrgencyHook $ defaultConfig
 		{ terminal           = "urxvtc"
 		, modMask            = mod4Mask
-		, focusFollowsMouse  = False
+		, focusFollowsMouse  = True
 		, borderWidth        = 1
 		, normalBorderColor  = colorBlackAlt
 		, focusedBorderColor = colorGray
 		, layoutHook         = myLayoutHook
-		, workspaces         = myWorkspaces
+		, workspaces         = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
 		, manageHook         = myManageHook <+> manageScratchPad <+> manageDocks <+> dynamicMasterHook
-		, logHook            = myLogHook botLeftBar <+> myLogHook1 botRightBar <+> myLogHook2 topLeftBar <+> myLogHook3 topRightBar <+> ewmhDesktopsLogHook >> setWMName "LG3D"
+		, logHook            = myBotLeftLogHook botLeftBar <+> myBotRightLogHook botRightBar <+> myTopLeftLogHook topLeftBar <+> myTopRightLogHook topRightBar <+> ewmhDesktopsLogHook >> setWMName "LG3D"
 		, handleEventHook    = myHandleEventHook
 		, keys               = myKeys
 		, mouseBindings      = myMouseBindings
 		, startupHook        = setDefaultCursor xC_left_ptr <+> (startTimer 1 >>= XS.put . TID)
 		}
-		`additionalKeysP`
-		[ ("<XF86TouchpadToggle>", spawn "/home/nnoell/bin/touchpadtoggle.sh") --because xF86XK_TouchpadToggle doesnt exist
-		, ("M-v", io $ modifyIORef ?focusFollow not)                           --Toggle focus follow moouse
-		]
 
 
 --------------------------------------------------------------------------------------------
@@ -109,12 +101,12 @@ main = do
 
 -- Colors, fonts and paths
 dzenFont             = "-*-montecarlo-medium-r-normal-*-11-*-*-*-*-*-*-*"
-colorBlack           = "#020202" --Background (Dzen_BG)
+colorBlack           = "#020202" --Background
 colorBlackAlt        = "#1c1c1c" --Black Xdefaults
-colorGray            = "#444444" --Gray       (Dzen_FG2)
+colorGray            = "#444444" --Gray
 colorGrayAlt         = "#101010" --Gray dark
-colorWhite           = "#a9a6af" --Foreground (Shell_FG)
-colorWhiteAlt        = "#9d9d9d" --White dark (Dzen_FG)
+colorWhite           = "#a9a6af" --Foreground
+colorWhiteAlt        = "#9d9d9d" --White dark
 colorMagenta         = "#8e82a2"
 colorBlue            = "#44aacc"
 colorBlueAlt         = "#3955c4"
@@ -122,15 +114,15 @@ colorRed             = "#f7a16e"
 colorRedAlt          = "#e0105f"
 colorGreen           = "#66ff66"
 colorGreenAlt        = "#558965"
-boxLeftIcon          = "/home/nnoell/.icons/xbm_icons/subtle/boxleft.xbm"  -- left icon of dzen logger boxes
-boxLeftIcon2         = "/home/nnoell/.icons/xbm_icons/subtle/boxleft2.xbm"  -- left icon2 of dzen logger boxes
-boxRightIcon         = "/home/nnoell/.icons/xbm_icons/subtle/boxright.xbm" -- right icon of dzen logger boxes
+boxLeftIcon          = "/home/nnoell/.icons/xbm_icons/subtle/boxleft.xbm"   --left icon of dzen logger boxes
+boxLeftIcon2         = "/home/nnoell/.icons/xbm_icons/subtle/boxleft2.xbm"  --left icon2 of dzen logger boxes
+boxRightIcon         = "/home/nnoell/.icons/xbm_icons/subtle/boxright.xbm"  --right icon of dzen logger boxes
 xRes                 = 1366
 yRes                 = 768
-panelHeight          = 16  -- height of top and bottom panels
-boxHeight            = 12  -- height of dzen logger box
-topPanelSepPos       = 950 -- left-right alignment pos of top panel
-botPanelSepPos       = 400 -- left-right alignment pos of bottom panel
+panelHeight          = 16  --height of top and bottom panels
+boxHeight            = 12  --height of dzen logger box
+topPanelSepPos       = 950 --left-right alignment pos of top panel
+botPanelSepPos       = 400 --left-right alignment pos of bottom panel
 
 -- Title theme
 myTitleTheme :: Theme
@@ -167,11 +159,11 @@ myXPConfig = defaultXPConfig
 -- GridSelect color scheme
 myColorizer :: Window -> Bool -> X (String, String)
 myColorizer = colorRangeFromClassName
-	(0x00,0x00,0x00) -- lowest inactive bg
-	(0x1C,0x1C,0x1C) -- highest inactive bg
-	(0x44,0xAA,0xCC) -- active bg
-	(0xBB,0xBB,0xBB) -- inactive fg
-	(0x00,0x00,0x00) -- active fg
+	(0x00,0x00,0x00) --lowest inactive bg
+	(0x1C,0x1C,0x1C) --highest inactive bg
+	(0x44,0xAA,0xCC) --active bg
+	(0xBB,0xBB,0xBB) --inactive fg
+	(0x00,0x00,0x00) --active fg
 
 -- GridSelect theme
 myGSConfig :: t -> GSConfig Window
@@ -186,116 +178,127 @@ myGSConfig colorizer = (buildDefaultGSConfig myColorizer)
 myTextConfig :: ShowTextConfig
 myTextConfig = STC
 	{ st_font = dzenFont
-	, st_bg = colorBlack
-	, st_fg = colorWhite
-    }
+	, st_bg   = colorBlack
+	, st_fg   = colorWhite
+	}
 
 -- Dzen logger box pretty printing themes
 gray2BoxPP :: BoxPP
-gray2BoxPP = BoxPP { bgColorBPP   = colorBlack
-				  , fgColorBPP   = colorGray
-				  , boxColorBPP  = colorGrayAlt
-				  , leftIconBPP  = boxLeftIcon2
-				  , rightIconBPP = boxRightIcon
-				  , boxHeightBPP = boxHeight
-				  }
+gray2BoxPP = BoxPP
+	{ bgColorBPP   = colorBlack
+	, fgColorBPP   = colorGray
+	, boxColorBPP  = colorGrayAlt
+	, leftIconBPP  = boxLeftIcon2
+	, rightIconBPP = boxRightIcon
+	, boxHeightBPP = boxHeight
+	}
 
 blueBoxPP :: BoxPP
-blueBoxPP = BoxPP { bgColorBPP   = colorBlack
-				  , fgColorBPP   = colorBlue
-				  , boxColorBPP  = colorGrayAlt
-				  , leftIconBPP  = boxLeftIcon
-				  , rightIconBPP = boxRightIcon
-				  , boxHeightBPP = boxHeight
-				  }
+blueBoxPP = BoxPP
+	{ bgColorBPP   = colorBlack
+	, fgColorBPP   = colorBlue
+	, boxColorBPP  = colorGrayAlt
+	, leftIconBPP  = boxLeftIcon
+	, rightIconBPP = boxRightIcon
+	, boxHeightBPP = boxHeight
+	}
 
 blue2BoxPP :: BoxPP
-blue2BoxPP = BoxPP { bgColorBPP   = colorBlack
-				   , fgColorBPP   = colorBlue
-				   , boxColorBPP  = colorGrayAlt
-				   , leftIconBPP  = boxLeftIcon2
-				   , rightIconBPP = boxRightIcon
-				   , boxHeightBPP = boxHeight
-				   }
-
+blue2BoxPP = BoxPP
+	{ bgColorBPP   = colorBlack
+	, fgColorBPP   = colorBlue
+	, boxColorBPP  = colorGrayAlt
+	, leftIconBPP  = boxLeftIcon2
+	, rightIconBPP = boxRightIcon
+	, boxHeightBPP = boxHeight
+	}
 
 whiteBoxPP :: BoxPP
-whiteBoxPP = BoxPP { bgColorBPP   = colorBlack
-				   , fgColorBPP   = colorWhiteAlt
-				   , boxColorBPP  = colorGrayAlt
-				   , leftIconBPP  = boxLeftIcon
-				   , rightIconBPP = boxRightIcon
-				   , boxHeightBPP = boxHeight
-				   }
+whiteBoxPP = BoxPP
+	{ bgColorBPP   = colorBlack
+	, fgColorBPP   = colorWhiteAlt
+	, boxColorBPP  = colorGrayAlt
+	, leftIconBPP  = boxLeftIcon
+	, rightIconBPP = boxRightIcon
+	, boxHeightBPP = boxHeight
+	}
 
 blackBoxPP :: BoxPP
-blackBoxPP = BoxPP { bgColorBPP   = colorBlack
-				   , fgColorBPP   = colorBlack
-				   , boxColorBPP  = colorGrayAlt
-				   , leftIconBPP  = boxLeftIcon
-				   , rightIconBPP = boxRightIcon
-				   , boxHeightBPP = boxHeight
-				   }
+blackBoxPP = BoxPP
+	{ bgColorBPP   = colorBlack
+	, fgColorBPP   = colorBlack
+	, boxColorBPP  = colorGrayAlt
+	, leftIconBPP  = boxLeftIcon
+	, rightIconBPP = boxRightIcon
+	, boxHeightBPP = boxHeight
+	}
 
 white2BBoxPP :: BoxPP
-white2BBoxPP = BoxPP { bgColorBPP   = colorBlack
-					 , fgColorBPP   = colorBlack
-					 , boxColorBPP  = colorWhiteAlt
-					 , leftIconBPP  = boxLeftIcon2
-					 , rightIconBPP = boxRightIcon
-					 , boxHeightBPP = boxHeight
-					 }
+white2BBoxPP = BoxPP
+	{ bgColorBPP   = colorBlack
+	, fgColorBPP   = colorBlack
+	, boxColorBPP  = colorWhiteAlt
+	, leftIconBPP  = boxLeftIcon2
+	, rightIconBPP = boxRightIcon
+	, boxHeightBPP = boxHeight
+	}
 
-blue2BBoxPP :: BoxPP -- current workspace
-blue2BBoxPP = BoxPP { bgColorBPP   = colorBlack
-					, fgColorBPP   = colorBlack
-					, boxColorBPP  = colorBlue
-					, leftIconBPP  = boxLeftIcon2
-					, rightIconBPP = boxRightIcon
-					, boxHeightBPP = boxHeight
-					}
+blue2BBoxPP :: BoxPP --current workspace
+blue2BBoxPP = BoxPP
+	{ bgColorBPP   = colorBlack
+	, fgColorBPP   = colorBlack
+	, boxColorBPP  = colorBlue
+	, leftIconBPP  = boxLeftIcon2
+	, rightIconBPP = boxRightIcon
+	, boxHeightBPP = boxHeight
+	}
 
-green2BBoxPP :: BoxPP -- urgent workspace
-green2BBoxPP = BoxPP { bgColorBPP   = colorBlack
-					 , fgColorBPP   = colorBlack
-					 , boxColorBPP  = colorGreen
-					 , leftIconBPP  = boxLeftIcon2
-					 , rightIconBPP = boxRightIcon
-					 , boxHeightBPP = boxHeight
-					 }
+green2BBoxPP :: BoxPP --urgent workspace
+green2BBoxPP = BoxPP
+	{ bgColorBPP   = colorBlack
+	, fgColorBPP   = colorBlack
+	, boxColorBPP  = colorGreen
+	, leftIconBPP  = boxLeftIcon2
+	, rightIconBPP = boxRightIcon
+	, boxHeightBPP = boxHeight
+	}
 
 -- Dzen logger clickable areas
 calendarCA :: CA
-calendarCA = CA { leftClickCA   = "/home/nnoell/bin/dzencal.sh"
-				, middleClickCA = ""
-				, rightClickCA  = ""
-				, wheelUpCA     = ""
-				, wheelDownCA   = ""
-				}
+calendarCA = CA
+	{ leftClickCA   = "/home/nnoell/bin/dzencal.sh"
+	, middleClickCA = ""
+	, rightClickCA  = ""
+	, wheelUpCA     = ""
+	, wheelDownCA   = ""
+	}
 
 layoutCA :: CA
-layoutCA = CA { leftClickCA   = "/usr/bin/xdotool key super+space"
-			  , middleClickCA = ""
-			  , rightClickCA  = "/usr/bin/xdotool key super+shift+space"
-			  , wheelUpCA     = ""
-			  , wheelDownCA   = ""
-			  }
+layoutCA = CA
+	{ leftClickCA   = "/usr/bin/xdotool key super+space"
+	, middleClickCA = ""
+	, rightClickCA  = "/usr/bin/xdotool key super+shift+space"
+	, wheelUpCA     = ""
+	, wheelDownCA   = ""
+	}
 
 workspaceCA :: CA
-workspaceCA = CA { leftClickCA   = "/usr/bin/xdotool key super+1"
-				 , middleClickCA = "/usr/bin/xdotool key super+g"
-				 , rightClickCA  = "/usr/bin/xdotool key super+0"
-				 , wheelUpCA     = ""
-				 , wheelDownCA   = ""
-				 }
+workspaceCA = CA
+	{ leftClickCA   = "/usr/bin/xdotool key super+1"
+	, middleClickCA = "/usr/bin/xdotool key super+g"
+	, rightClickCA  = "/usr/bin/xdotool key super+0"
+	, wheelUpCA     = "/usr/bin/xdotool key ctrl+alt+Right"
+	, wheelDownCA   = "/usr/bin/xdotool key ctrl+alt+Left"
+	}
 
 focusCA :: CA
-focusCA = CA { leftClickCA   = "/usr/bin/xdotool key super+m"
-			 , middleClickCA = "/usr/bin/xdotool key super+c"
-			 , rightClickCA  = "/usr/bin/xdotool key super+shift+m"
-			 , wheelUpCA     = ""
-			 , wheelDownCA   = ""
-			 }
+focusCA = CA
+	{ leftClickCA   = "/usr/bin/xdotool key super+m"
+	, middleClickCA = "/usr/bin/xdotool key super+c"
+	, rightClickCA  = "/usr/bin/xdotool key super+shift+m"
+	, wheelUpCA     = "/usr/bin/xdotool key super+shift+j"
+	, wheelDownCA   = "/usr/bin/xdotool key super+shift+k"
+	}
 
 -- Workspaces
 myWorkspaces :: [WorkspaceId]
@@ -329,8 +332,7 @@ instance Transformer FLOATED Window where
 	transform FLOATED x k = k myFlat (\_ -> x)
 
 -- Layout hook
-myLayoutHook = gaps [(U,panelHeight), (D,panelHeight), (L,0), (R,0)]
-	$ avoidStruts
+myLayoutHook = avoidStruts
 	$ windowNavigation
 	$ minimize
 	$ maximize
@@ -343,8 +345,7 @@ myLayoutHook = gaps [(U,panelHeight), (D,panelHeight), (L,0), (R,0)]
 	$ onWorkspace (myWorkspaces !! 2) codeLayouts --Workspace 2 layouts
 	$ onWorkspace (myWorkspaces !! 3) gimpLayouts --Workspace 3 layouts
 	$ onWorkspace (myWorkspaces !! 4) chatLayouts --Workspace 4 layouts
-	$ allLayouts
-	where
+	$ allLayouts where
 		allLayouts  = myTile ||| myObig ||| myMirr ||| myMosA ||| myTabM
 		webLayouts  = myTabs ||| myMirr ||| myTabM
 		codeLayouts = myTabM ||| myTile
@@ -363,22 +364,16 @@ instance ExtensionClass TidState where
 	initialValue = TID 0
 
 -- Handle event hook
-myHandleEventHook :: (?focusFollow::IORef Bool) => Event -> X All
-myHandleEventHook = fullscreenEventHook <+> docksEventHook <+> clockEventHook <+> handleTimerEvent <+> toggleFocus
-	where
-		toggleFocus e = case e of --thanks to Vgot
-			CrossingEvent {ev_window=w, ev_event_type=t}
-				| t == enterNotify, ev_mode e == notifyNormal -> do
-					whenX (io $ readIORef ?focusFollow) (focus w)
-					return $ All True
-			_ -> return $ All True
-		clockEventHook e = do                   --thanks to DarthFennec
-			(TID t) <- XS.get                   --get the recent Timer id
-			handleTimer t e $ do                --run the following if e matches the id
-			    startTimer 1 >>= XS.put . TID   --restart the timer, store the new id
-			    ask >>= logHook.config          --get the loghook and run it
-			    return Nothing                  --return required type
-			return $ All True                   --return required type
+myHandleEventHook = fullscreenEventHook <+> docksEventHook <+> clockEventHook <+> handleTimerEvent <+> notFocusFloat where
+	clockEventHook e = do                 --thanks to DarthFennec
+		(TID t) <- XS.get                 --get the recent Timer id
+		handleTimer t e $ do              --run the following if e matches the id
+		    startTimer 1 >>= XS.put . TID --restart the timer, store the new id
+		    ask >>= logHook.config        --get the loghook and run it
+		    return Nothing                --return required type
+		return $ All True                 --return required type
+	notFocusFloat = followOnlyIf (fmap not isFloat) where --Do not focusFollowMouse on Float layout
+		isFloat = fmap (isSuffixOf "Simple Float") $ gets (description . W.layout . W.workspace . W.current . windowset)
 
 
 --------------------------------------------------------------------------------------------
@@ -393,20 +388,19 @@ scratchPad = scratchpadSpawnActionCustom "urxvtc -name scratchpad"
 -- Manage hook
 myManageHook :: ManageHook
 myManageHook = composeAll . concat $
-	[ [resource     =? r     --> doIgnore                             | r <- myIgnores] --ignore desktop
-	, [className    =? c     --> doShift (myWorkspaces !! 1)          | c <- myWebS   ] --move myWebS windows to workspace 1 by classname
-	, [className    =? c     --> doShift (myWorkspaces !! 2)          | c <- myCodeS  ] --move myCodeS windows to workspace 2 by classname
-	, [className    =? c     --> doShift (myWorkspaces !! 4)          | c <- myChatS  ] --move myChatS windows to workspace 4 by classname
-	, [className    =? c     --> doShift (myWorkspaces !! 3)          | c <- myGfxS   ] --move myGfxS windows to workspace 4 by classname
-	, [className    =? c     --> doShiftAndGo (myWorkspaces !! 5)     | c <- myAlt1S  ] --move myGameS windows to workspace 5 by classname and shift
-	, [className    =? c     --> doShift (myWorkspaces !! 7)          | c <- myAlt3S  ] --move myOtherS windows to workspace 5 by classname and shift
-	, [className    =? c     --> doCenterFloat                        | c <- myFloatCC] --float center geometry by classname
-	, [name         =? n     --> doCenterFloat                        | n <- myFloatCN] --float center geometry by name
-	, [name         =? n     --> doSideFloat NW                       | n <- myFloatSN] --float side NW geometry by name
-	, [className    =? c     --> doF W.focusDown                      | c <- myFocusDC] --dont focus on launching by classname
-	, [isFullscreen          --> doFullFloat]
-	]
-	where
+	[ [resource  =? r --> doIgnore                         | r <- myIgnores] --ignore desktop
+	, [className =? c --> doShift (myWorkspaces !! 1)      | c <- myWebS   ] --move myWebS windows to workspace 1 by classname
+	, [className =? c --> doShift (myWorkspaces !! 2)      | c <- myCodeS  ] --move myCodeS windows to workspace 2 by classname
+	, [className =? c --> doShift (myWorkspaces !! 4)      | c <- myChatS  ] --move myChatS windows to workspace 4 by classname
+	, [className =? c --> doShift (myWorkspaces !! 3)      | c <- myGfxS   ] --move myGfxS windows to workspace 4 by classname
+	, [className =? c --> doShiftAndGo (myWorkspaces !! 5) | c <- myAlt1S  ] --move myGameS windows to workspace 5 by classname and shift
+	, [className =? c --> doShift (myWorkspaces !! 7)      | c <- myAlt3S  ] --move myOtherS windows to workspace 5 by classname and shift
+	, [className =? c --> doCenterFloat                    | c <- myFloatCC] --float center geometry by classname
+	, [name      =? n --> doCenterFloat                    | n <- myFloatCN] --float center geometry by name
+	, [name      =? n --> doSideFloat NW                   | n <- myFloatSN] --float side NW geometry by name
+	, [className =? c --> doF W.focusDown                  | c <- myFocusDC] --dont focus on launching by classname
+	, [isFullscreen   --> doFullFloat]
+	] where
 		doShiftAndGo ws = doF (W.greedyView ws) <+> doShift ws
 		role            = stringProperty "WM_WINDOW_ROLE"
 		name            = stringProperty "WM_NAME"
@@ -428,19 +422,82 @@ myManageHook = composeAll . concat $
 
 
 --------------------------------------------------------------------------------------------
--- STATUS BARS CONFIG                                                                     --
+-- DZEN STATUS BARS CONFIG                                                                     --
 --------------------------------------------------------------------------------------------
 
--- UrgencyHook
+-- urgencyHook
+myUrgencyHook :: LayoutClass l Window => XConfig l -> XConfig l
 myUrgencyHook = withUrgencyHook dzenUrgencyHook
 	{ duration = 2000000
 	, args     = ["-x", "0", "-y", "0", "-h", show panelHeight, "-w", show topPanelSepPos, "-fn", dzenFont, "-bg", colorBlack, "-fg", colorGreen]
 	}
 
--- botLeftBar
-myBotLeftBar = "dzen2 -x 0 -y " ++ show (yRes - panelHeight) ++ " -h " ++ show panelHeight ++ " -w " ++ show botPanelSepPos ++ " -ta 'l' -fg '" ++ colorWhiteAlt ++ "' -bg '" ++ colorBlack ++ "' -fn '" ++ dzenFont ++ "' -p -e 'onstart=lower'"
-myLogHook :: Handle -> X ()
-myLogHook h = dynamicLogWithPP $ defaultPP
+-- Dzen top left bar flags
+dzenTopLeftFlags :: DF
+dzenTopLeftFlags = DF
+	{ xPosDF       = 0
+	, yPosDF       = 0
+	, widthDF      = topPanelSepPos
+	, heightDF     = panelHeight
+	, alignementDF = "l"
+	, fgColorDF    = colorWhiteAlt
+	, bgColorDF    = colorBlack
+	, fontDF       = dzenFont
+	, eventDF      = "onstart=lower"
+	, extrasDF     = "-p"
+	}
+
+-- Top left bar logHook
+myTopLeftLogHook :: Handle -> X ()
+myTopLeftLogHook h = dynamicLogWithPP $ defaultPP
+	{ ppOutput = hPutStrLn h
+	, ppOrder = \(_:_:_:x) -> x
+	, ppSep = " "
+	, ppExtras = [ myLayoutL, myWorkspaceL, myFocusL ]
+	}
+
+-- Dzen top right bar flags
+dzenTopRightFlags :: DF
+dzenTopRightFlags = DF
+	{ xPosDF       = topPanelSepPos
+	, yPosDF       = 0
+	, widthDF      = xRes - topPanelSepPos
+	, heightDF     = panelHeight
+	, alignementDF = "r"
+	, fgColorDF    = colorWhiteAlt
+	, bgColorDF    = colorBlack
+	, fontDF       = dzenFont
+	, eventDF      = "onstart=lower"
+	, extrasDF     = "-p"
+	}
+
+-- Top right bar logHook
+myTopRightLogHook :: Handle -> X ()
+myTopRightLogHook h = dynamicLogWithPP $ defaultPP
+	{ ppOutput  = hPutStrLn h
+	, ppOrder = \(_:_:_:x) -> x
+	, ppSep = " "
+	, ppExtras  = [ myUptimeL, myDateL ]
+	}
+
+-- Dzen bottom left bar flags
+dzenBotLeftFlags :: DF
+dzenBotLeftFlags = DF
+	{ xPosDF       = 0
+	, yPosDF       = yRes - panelHeight
+	, widthDF      = botPanelSepPos
+	, heightDF     = panelHeight
+	, alignementDF = "l"
+	, fgColorDF    = colorWhiteAlt
+	, bgColorDF    = colorBlack
+	, fontDF       = dzenFont
+	, eventDF      = "onstart=lower"
+	, extrasDF     = "-p"
+	}
+
+-- Bottom left bar logHook
+myBotLeftLogHook :: Handle -> X ()
+myBotLeftLogHook h = dynamicLogWithPP $ defaultPP
 	{ ppOutput          = hPutStrLn h
 	, ppSort            = fmap (namedScratchpadFilterOutWorkspace .) (ppSort defaultPP) --hide "NSP" from workspace list
 	, ppOrder           = \(ws:l:_:x) -> [ws] ++ x
@@ -448,49 +505,39 @@ myLogHook h = dynamicLogWithPP $ defaultPP
 	, ppWsSep           = ""
 	, ppCurrent         = dzenBoxStyle blue2BBoxPP
 	, ppUrgent          = dzenBoxStyle green2BBoxPP . dzenClickWorkspace
-	, ppVisible         = dzenBoxStyle blackBoxPP  . dzenClickWorkspace
-	, ppHiddenNoWindows = dzenBoxStyle blackBoxPP  . dzenClickWorkspace
-	, ppHidden          = dzenBoxStyle whiteBoxPP  . dzenClickWorkspace
+	, ppVisible         = dzenBoxStyle blackBoxPP . dzenClickWorkspace
+	, ppHiddenNoWindows = dzenBoxStyle blackBoxPP . dzenClickWorkspace
+	, ppHidden          = dzenBoxStyle whiteBoxPP . dzenClickWorkspace
 	, ppExtras          = [ myFsL ]
+	} where
+		dzenClickWorkspace ws = "^ca(1," ++ xdo "w;" ++ xdo index ++ ")" ++ "^ca(3," ++ xdo "w;" ++ xdo index ++ ")" ++ ws ++ "^ca()^ca()" where
+			wsIdxToString Nothing = "1"
+			wsIdxToString (Just n) = show $ mod (n+1) $ length myWorkspaces
+			index = wsIdxToString (elemIndex ws myWorkspaces)
+			xdo key = "/usr/bin/xdotool key super+" ++ key
+
+-- Dzen bottom right bar flags
+dzenBotRightFlags :: DF
+dzenBotRightFlags = DF
+	{ xPosDF       = botPanelSepPos
+	, yPosDF       = yRes - panelHeight
+	, widthDF      = xRes - botPanelSepPos
+	, heightDF     = panelHeight
+	, alignementDF = "r"
+	, fgColorDF    = colorWhiteAlt
+	, bgColorDF    = colorBlack
+	, fontDF       = dzenFont
+	, eventDF      = "onstart=lower"
+	, extrasDF     = "-p"
 	}
-	where
-		dzenClickWorkspace ws = "^ca(1," ++ xdo "w;" ++ xdo index ++ ")" ++ "^ca(3," ++ xdo "w;" ++ xdo index ++ ")" ++ ws ++ "^ca()^ca()"
-			where
-				wsIdxToString Nothing = "1"
-				wsIdxToString (Just n) = show $ mod (n+1) $ length myWorkspaces
-				index = wsIdxToString (elemIndex ws myWorkspaces)
-				xdo key = "/usr/bin/xdotool key super+" ++ key
 
-
--- botRightBar
-myBotRightBar = "dzen2 -x " ++ show botPanelSepPos ++ " -y " ++ show (yRes - panelHeight) ++ " -h " ++ show panelHeight ++ " -w " ++ show (xRes - botPanelSepPos) ++ " -ta 'r' -fg '" ++ colorWhiteAlt ++ "' -bg '" ++ colorBlack ++ "' -fn '" ++ dzenFont ++ "' -p -e 'onstart=lower'"
-myLogHook1 :: Handle -> X ()
-myLogHook1 h = dynamicLogWithPP $ defaultPP
+-- Bottom right bar logHook
+myBotRightLogHook :: Handle -> X ()
+myBotRightLogHook h = dynamicLogWithPP $ defaultPP
 	{ ppOutput          = hPutStrLn h
 	, ppOrder           = \(_:_:_:x) -> x
 	, ppSep             = " "
 	, ppExtras          = [ myCpuL, myMemL, myTempL, myBrightL, myWifiL, myBatL ]
-	}
-
--- TopLeftBar
-myTopLeftBar = "dzen2 -x 0 -y 0 -h " ++ show panelHeight ++ " -w " ++ show topPanelSepPos ++ " -ta 'l' -fg '" ++ colorWhiteAlt ++ "' -bg '" ++ colorBlack ++ "' -fn '" ++ dzenFont ++ "' -p -e 'onstart=lower'"
-myLogHook2 :: Handle -> X ()
-myLogHook2 h = dynamicLogWithPP $ defaultPP
-	{ ppOutput          = hPutStrLn h
-	, ppOrder           = \(_:_:_:x) -> x
-	, ppSep             = " "
-	, ppExtras          = [ myLayoutL, myWorkspaceL, myFocusL ]
-	}
-
-
--- TopRightBar
-myTopRightBar = "dzen2 -x " ++ show topPanelSepPos ++ " -y 0 -h " ++ show panelHeight ++ " -w " ++ show (xRes - topPanelSepPos) ++ " -ta 'r' -fg '" ++ colorWhiteAlt ++ "' -bg '" ++ colorBlack ++ "' -fn '" ++ dzenFont ++ "' -p -e 'onstart=lower'"
-myLogHook3 :: Handle -> X ()
-myLogHook3 h = dynamicLogWithPP $ defaultPP
-	{ ppOutput          = hPutStrLn h
-	, ppOrder           = \(_:_:_:x) -> x
-	, ppSep             = " "
-	, ppExtras          = [ myUptimeL, myDateL ]
 	}
 
 
@@ -508,30 +555,28 @@ myFsL        = (dzenBoxStyleL blue2BoxPP $ labelL "ROOT") ++! (dzenBoxStyleL whi
 myDateL      = (dzenBoxStyleL white2BBoxPP $ date "%A") ++! (dzenBoxStyleL whiteBoxPP $ date $ "%Y^fg(" ++ colorGray ++ ").^fg()%m^fg(" ++ colorGray ++ ").^fg()^fg(" ++ colorBlue ++ ")%d^fg() ^fg(" ++ colorGray ++ ")-^fg() %H^fg(" ++ colorGray ++ "):^fg()%M^fg(" ++ colorGray ++ "):^fg()^fg(" ++ colorGreen ++ ")%S^fg()") ++! (dzenClickStyleL calendarCA $ dzenBoxStyleL blueBoxPP $ labelL "CALENDAR")
 myUptimeL    = (dzenBoxStyleL blue2BoxPP $ labelL "UPTIME") ++! (dzenBoxStyleL whiteBoxPP uptime)
 myFocusL     = (dzenClickStyleL focusCA $ dzenBoxStyleL white2BBoxPP $ labelL "FOCUS") ++! (dzenBoxStyleL whiteBoxPP $ shortenL 100 logTitle)
-myLayoutL    = (dzenClickStyleL layoutCA $ dzenBoxStyleL blue2BoxPP $ labelL "LAYOUT") ++! (dzenBoxStyleL whiteBoxPP $ onLogger (layoutText . removeWord . removeWord) logLayout)
-	where
-		removeWord = tail . dropWhile (/= ' ')
-		layoutText xs
-			| isPrefixOf "Mirror" xs       = layoutText $ removeWord xs ++ " [M]"
-			| isPrefixOf "ReflectY" xs     = layoutText $ removeWord xs ++ " [Y]"
-			| isPrefixOf "ReflectX" xs     = layoutText $ removeWord xs ++ " [X]"
-			| isPrefixOf "Simple Float" xs = "^fg(" ++ colorRed ++ ")" ++ xs
-			| isPrefixOf "Full Tabbed" xs  = "^fg(" ++ colorGreen ++ ")" ++ xs
-			| otherwise                    = "^fg(" ++ colorWhiteAlt ++ ")" ++ xs
-myWorkspaceL = (dzenClickStyleL workspaceCA $ dzenBoxStyleL blue2BoxPP $ labelL "WORKSPACE") ++! (dzenBoxStyleL whiteBoxPP $ onLogger namedWorkspaces logCurrent)
-	where
-		namedWorkspaces w
-			| w == "1"  = "^fg(" ++ colorGreen ++ ")1^fg(" ++ colorGray ++ ")|^fg()Terminal"
-			| w == "2"  = "^fg(" ++ colorGreen ++ ")2^fg(" ++ colorGray ++ ")|^fg()Network"
-			| w == "3"  = "^fg(" ++ colorGreen ++ ")3^fg(" ++ colorGray ++ ")|^fg()Development"
-			| w == "4"  = "^fg(" ++ colorGreen ++ ")4^fg(" ++ colorGray ++ ")|^fg()Graphics"
-			| w == "5"  = "^fg(" ++ colorGreen ++ ")5^fg(" ++ colorGray ++ ")|^fg()Chatting"
-			| w == "6"  = "^fg(" ++ colorGreen ++ ")6^fg(" ++ colorGray ++ ")|^fg()Alternative"
-			| w == "7"  = "^fg(" ++ colorGreen ++ ")7^fg(" ++ colorGray ++ ")|^fg()Alternative"
-			| w == "8"  = "^fg(" ++ colorGreen ++ ")8^fg(" ++ colorGray ++ ")|^fg()Alternative"
-			| w == "9"  = "^fg(" ++ colorGreen ++ ")9^fg(" ++ colorGray ++ ")|^fg()Alternative"
-			| w == "0"  = "^fg(" ++ colorGreen ++ ")0^fg(" ++ colorGray ++ ")|^fg()Alternative"
-			| otherwise = "^fg(" ++ colorRed   ++ ")x^fg(" ++ colorGray ++ ")|^fg()" ++ w
+myLayoutL    = (dzenClickStyleL layoutCA $ dzenBoxStyleL blue2BoxPP $ labelL "LAYOUT") ++! (dzenBoxStyleL whiteBoxPP $ onLogger (layoutText . removeWord . removeWord) logLayout) where
+	removeWord = tail . dropWhile (/= ' ')
+	layoutText xs
+		| isPrefixOf "Mirror" xs       = layoutText $ removeWord xs ++ " [M]"
+		| isPrefixOf "ReflectY" xs     = layoutText $ removeWord xs ++ " [Y]"
+		| isPrefixOf "ReflectX" xs     = layoutText $ removeWord xs ++ " [X]"
+		| isPrefixOf "Simple Float" xs = "^fg(" ++ colorGreen ++ ")" ++ xs
+		| isPrefixOf "Full Tabbed" xs  = "^fg(" ++ colorRed ++ ")" ++ xs
+		| otherwise                    = "^fg(" ++ colorWhiteAlt ++ ")" ++ xs
+myWorkspaceL = (dzenClickStyleL workspaceCA $ dzenBoxStyleL blue2BoxPP $ labelL "WORKSPACE") ++! (dzenBoxStyleL whiteBoxPP $ onLogger namedWorkspaces logCurrent) where
+	namedWorkspaces w
+		| w == "1"  = "^fg(" ++ colorGreen ++ ")1^fg(" ++ colorGray ++ ")|^fg()Terminal"
+		| w == "2"  = "^fg(" ++ colorGreen ++ ")2^fg(" ++ colorGray ++ ")|^fg()Network"
+		| w == "3"  = "^fg(" ++ colorGreen ++ ")3^fg(" ++ colorGray ++ ")|^fg()Development"
+		| w == "4"  = "^fg(" ++ colorGreen ++ ")4^fg(" ++ colorGray ++ ")|^fg()Graphics"
+		| w == "5"  = "^fg(" ++ colorGreen ++ ")5^fg(" ++ colorGray ++ ")|^fg()Chatting"
+		| w == "6"  = "^fg(" ++ colorGreen ++ ")6^fg(" ++ colorGray ++ ")|^fg()Alternative"
+		| w == "7"  = "^fg(" ++ colorGreen ++ ")7^fg(" ++ colorGray ++ ")|^fg()Alternative"
+		| w == "8"  = "^fg(" ++ colorGreen ++ ")8^fg(" ++ colorGray ++ ")|^fg()Alternative"
+		| w == "9"  = "^fg(" ++ colorGreen ++ ")9^fg(" ++ colorGray ++ ")|^fg()Alternative"
+		| w == "0"  = "^fg(" ++ colorGreen ++ ")0^fg(" ++ colorGray ++ ")|^fg()Alternative"
+		| otherwise = "^fg(" ++ colorRed   ++ ")x^fg(" ++ colorGray ++ ")|^fg()" ++ w
 
 
 --------------------------------------------------------------------------------------------
@@ -595,12 +640,13 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 	, ((modMask .|. shiftMask, xK_x), sendMessage $ XMonad.Layout.MultiToggle.Toggle REFLECTX)                                         --Reflect layout by X
 	, ((modMask .|. shiftMask, xK_y), sendMessage $ XMonad.Layout.MultiToggle.Toggle REFLECTY)                                         --Reflect layout by Y
 	--Gaps management bindings
-	, ((modMask .|. controlMask, xK_t), sendMessage $ ToggleGaps)  --toogle all gaps
-	, ((modMask .|. controlMask, xK_u), sendMessage $ ToggleGap U) --toogle the top gap
-	, ((modMask .|. controlMask, xK_d), sendMessage $ ToggleGap D) --toogle the bottom gap
+	, ((modMask .|. controlMask, xK_t), sendMessage $ ToggleStruts ) --toogle the all struts
+	, ((modMask .|. controlMask, xK_u), sendMessage $ ToggleStrut U) --toogle the top strut
+	, ((modMask .|. controlMask, xK_d), sendMessage $ ToggleStrut D) --toogle the bottom strut
 	--Scripts management bindings
-	, ((modMask , xK_x), spawn "/usr/bin/xcalib -invert -alter")                                                          --Invert colors in X
-	, ((modMask , xK_d), spawn "/usr/bin/killall dzen2 haskell-cpu-usage.out")                                            --Kill dzen2
+	, ((modMask, xK_x), spawn "/usr/bin/xcalib -invert -alter")                                                           --Invert colors in X
+	, ((modMask, xK_d), spawn "/usr/bin/killall dzen2 haskell-cpu-usage.out")                                             --Kill dzen2
+	, ((0, 0x1008ffa9), spawn "/home/nnoell/bin/touchpadtoggle.sh")                                                       --Toggle touchpad (xmodmap -pk | grep -i toggle)
 	, ((0, xF86XK_AudioMute), spawn "/home/nnoell/bin/voldzen.sh t -d")                                                   --Mute/unmute volume
 	, ((0, xF86XK_AudioRaiseVolume), spawn "/home/nnoell/bin/voldzen.sh + -d")                                            --Raise volume
 	, ((mod1Mask, xK_Up), spawn "/home/nnoell/bin/voldzen.sh + -d")
@@ -626,16 +672,15 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 	, ((mod1Mask .|. controlMask, xK_Right), flashText myTextConfig 1 " Moved to Next Workspace " >> nextWS)                  --Move to next Workspace
 	, ((modMask .|. shiftMask, xK_n), flashText myTextConfig 1 " Shifted to Next Workspace " >> shiftToNext)                  --Send client to next workspace
 	, ((modMask .|. shiftMask, xK_p), flashText myTextConfig 1 " Shifted to Previous Workspace " >> shiftToPrev)              --Send client to previous workspace
-	]
-	++
-	[((m .|. modMask, k), windows $ f i)                                                        --Switch to n workspaces and send client to n workspaces
-		| (i, k) <- zip (XMonad.workspaces conf) ([xK_1 .. xK_9] ++ [xK_0])
-		, (f, m) <- [(W.greedyView, 0), (W.shift, shiftMask)]]
-	++
-	[((m .|. modMask, key), screenWorkspace sc >>= flip whenJust (windows . f))                 --Switch to n screens and send client to n screens
-		| (key, sc) <- zip [xK_w, xK_e, xK_r] [0..]
-		, (f, m) <- [(W.view, 0), (W.shift, shiftMask)]]
-	where
+	] ++
+	[ ((m .|. modMask, k), windows $ f i)                                                        --Switch to n workspaces and send client to n workspaces
+	  | (i, k) <- zip (XMonad.workspaces conf) ([xK_1 .. xK_9] ++ [xK_0])
+	  , (f, m) <- [(W.greedyView, 0), (W.shift, shiftMask)]
+	] ++
+	[ ((m .|. modMask, key), screenWorkspace sc >>= flip whenJust (windows . f))                 --Switch to n screens and send client to n screens
+	  | (key, sc) <- zip [xK_w, xK_e, xK_r] [0..]
+	  , (f, m) <- [(W.view, 0), (W.shift, shiftMask)]
+	] where
 		fullFloatFocused = withFocused $ \f -> windows =<< appEndo `fmap` runQuery doFullFloat f
 		rectFloatFocused = withFocused $ \f -> windows =<< appEndo `fmap` runQuery (doRectFloat $ RationalRect 0.05 0.05 0.9 0.9) f
 

@@ -9,8 +9,8 @@
 --------------------------------------------------------------------------------------------
 
 module DzenBoxLoggers
-	( BoxPP(..), CA(..)
-	, dzenBoxStyle, dzenBoxStyleL, dzenClickStyleL
+	( DF(..), BoxPP(..), CA(..)
+	, dzenFlagsToStr, dzenBoxStyle, dzenClickStyle, dzenBoxStyleL, dzenClickStyleL
 	, (++!)
 	, labelL
 	, readWithE
@@ -30,6 +30,19 @@ import XMonad.Util.Loggers
 import StatFS
 import Control.Exception as E
 
+-- Dzen flags
+data DF = DF
+	{ xPosDF       :: Int
+	, yPosDF       :: Int
+	, widthDF      :: Int
+	, heightDF     :: Int
+	, alignementDF :: String
+	, fgColorDF    :: String
+	, bgColorDF    :: String
+	, fontDF       :: String
+	, eventDF      :: String
+	, extrasDF     :: String
+	}
 
 -- Dzen box pretty config
 data BoxPP = BoxPP
@@ -50,9 +63,42 @@ data CA = CA
 	, wheelDownCA   :: String
 	}
 
--- uses dzen format to draw a "box" arround a given text
+-- Create a dzen string with its flags
+dzenFlagsToStr :: DF -> String
+dzenFlagsToStr df = "dzen2 -x '" ++ (show $ xPosDF df) ++
+				  "' -y '" ++ (show $ yPosDF df) ++
+				  "' -w '" ++ (show $ widthDF df) ++
+				  "' -h '" ++ (show $ heightDF df) ++
+				  "' -ta '" ++ alignementDF df ++
+				  "' -fg '" ++ fgColorDF df ++
+				  "' -bg '" ++ bgColorDF df ++
+				  "' -fn '" ++ fontDF df ++
+				  "' -e '" ++ eventDF df ++
+				  "' " ++ extrasDF df
+
+
+-- Uses dzen format to draw a "box" arround a given text
 dzenBoxStyle :: BoxPP -> String -> String
-dzenBoxStyle bpp t = "^fg(" ++ (boxColorBPP bpp) ++ ")^i(" ++ (leftIconBPP bpp)  ++ ")^ib(1)^r(1920x" ++ (show $ boxHeightBPP bpp) ++ ")^p(-1920)^fg(" ++ (fgColorBPP bpp) ++ ")" ++ t ++ "^fg(" ++ (boxColorBPP bpp) ++ ")^i(" ++ (rightIconBPP bpp) ++ ")^fg(" ++ (bgColorBPP bpp) ++ ")^r(1920x" ++ (show $ boxHeightBPP bpp) ++ ")^p(-1920)^fg()^ib(0)"
+dzenBoxStyle bpp t = "^fg(" ++ (boxColorBPP bpp) ++
+					 ")^i(" ++ (leftIconBPP bpp)  ++
+					 ")^ib(1)^r(1920x" ++ (show $ boxHeightBPP bpp) ++
+					 ")^p(-1920)^fg(" ++ (fgColorBPP bpp) ++
+					 ")" ++ t ++
+					 "^fg(" ++ (boxColorBPP bpp) ++
+					 ")^i(" ++ (rightIconBPP bpp) ++
+					 ")^fg(" ++ (bgColorBPP bpp) ++
+					 ")^r(1920x" ++ (show $ boxHeightBPP bpp) ++
+					 ")^p(-1920)^fg()^ib(0)"
+
+-- Uses dzen format to make dzen text clickable
+dzenClickStyle :: CA -> String -> String
+dzenClickStyle ca t = "^ca(1," ++ leftClickCA ca ++
+					  ")^ca(2," ++ middleClickCA ca ++
+					  ")^ca(3," ++ rightClickCA ca ++
+					  ")^ca(4," ++ wheelUpCA ca ++
+					  ")^ca(5," ++ wheelDownCA ca ++
+					  ")" ++ t ++
+					  "^ca()^ca()^ca()^ca()^ca()"
 
 -- Logger version of dzenBoxStyle
 dzenBoxStyleL :: BoxPP -> Logger -> Logger
@@ -63,13 +109,13 @@ dzenBoxStyleL bpp l = do
 		return $ dzenBoxStyle bpp t
 	return text
 
--- uses dzen format to make the logger clickable
+-- Logger version of dzenClickStyle
 dzenClickStyleL :: CA -> Logger -> Logger
 dzenClickStyleL ca l = do
 	log <- l
 	let text = do
 		t <- log
-		return $ "^ca(1," ++ leftClickCA ca ++ ")^ca(2," ++ middleClickCA ca ++ ")^ca(3," ++ rightClickCA ca ++ ")^ca(4," ++ wheelUpCA ca ++ ")^ca(5," ++ wheelDownCA ca ++ ")" ++ t ++ "^ca()^ca()^ca()^ca()^ca()"
+		return $ dzenClickStyle ca t
 	return text
 
 -- Concat two Loggers
@@ -153,7 +199,7 @@ memUsage = do
 	return $ return $ (show perc) ++ "% " ++ (show $ div used 1024) ++ "MB"
 
 
--- CPU Usage Logger: this is an ugly hack that depends on "haskell-cpu-usage" app. See my github repo to get the app.
+-- CPU Usage Logger: this is an ugly hack that depends on "haskell-cpu-usage" app (See my github repo to get the app)
 cpuUsage :: String -> Logger
 cpuUsage path = do
 	cpus <- liftIO $ readWithE path "N/A" ""
