@@ -305,9 +305,13 @@ focusCA = CA
 	, wheelDownCA   = "/usr/bin/xdotool key super+shift+k"
 	}
 
--- Workspaces
+-- Workspace index
 myWorkspaces :: [WorkspaceId]
-myWorkspaces = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+myWorkspaces = map show $ [1..9] ++ [0]
+
+-- Workspace names
+workspacesNames :: [WorkspaceId]
+workspacesNames = ["Terminal", "Network", "Development", "Graphics", "Chatting", "Video", "Alternate", "Alternate", "Alternate", "Alternate" ]
 
 
 --------------------------------------------------------------------------------------------
@@ -579,17 +583,8 @@ myLayoutL    = (dzenClickStyleL layoutCA $ dzenBoxStyleL blue2BoxPP $ labelL "LA
 		| otherwise                    = "^fg(" ++ colorWhiteAlt ++ ")" ++ xs
 myWorkspaceL = (dzenClickStyleL workspaceCA $ dzenBoxStyleL blue2BoxPP $ labelL "WORKSPACE") ++! (dzenBoxStyleL whiteBoxPP $ onLogger namedWorkspaces logCurrent) where
 	namedWorkspaces w
-		| w == "1"  = "^fg(" ++ colorGreen ++ ")1^fg(" ++ colorGray ++ ")|^fg()Terminal"
-		| w == "2"  = "^fg(" ++ colorGreen ++ ")2^fg(" ++ colorGray ++ ")|^fg()Network"
-		| w == "3"  = "^fg(" ++ colorGreen ++ ")3^fg(" ++ colorGray ++ ")|^fg()Development"
-		| w == "4"  = "^fg(" ++ colorGreen ++ ")4^fg(" ++ colorGray ++ ")|^fg()Graphics"
-		| w == "5"  = "^fg(" ++ colorGreen ++ ")5^fg(" ++ colorGray ++ ")|^fg()Chatting"
-		| w == "6"  = "^fg(" ++ colorGreen ++ ")6^fg(" ++ colorGray ++ ")|^fg()Alternative"
-		| w == "7"  = "^fg(" ++ colorGreen ++ ")7^fg(" ++ colorGray ++ ")|^fg()Alternative"
-		| w == "8"  = "^fg(" ++ colorGreen ++ ")8^fg(" ++ colorGray ++ ")|^fg()Alternative"
-		| w == "9"  = "^fg(" ++ colorGreen ++ ")9^fg(" ++ colorGray ++ ")|^fg()Alternative"
-		| w == "0"  = "^fg(" ++ colorGreen ++ ")0^fg(" ++ colorGray ++ ")|^fg()Alternative"
-		| otherwise = "^fg(" ++ colorRed   ++ ")x^fg(" ++ colorGray ++ ")|^fg()" ++ w
+		| (elem w $ map show [0..9]) == True = "^fg(" ++ colorGreen ++ ")" ++ w ++ "^fg(" ++ colorGray ++ ")|^fg()" ++ workspacesNames !! (mod ((read w::Int) - 1) 10)
+		| otherwise                          = "^fg(" ++ colorRed ++ ")x^fg(" ++ colorGray ++ ")|^fg()" ++ w
 
 
 --------------------------------------------------------------------------------------------
