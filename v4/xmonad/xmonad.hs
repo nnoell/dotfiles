@@ -24,15 +24,19 @@ import XMonad.Layout.Reflect
 import XMonad.Layout.MosaicAlt
 import XMonad.Layout.NoFrillsDecoration
 import XMonad.Layout.SimplestFloat
-import XMonad.Layout.NoBorders (noBorders,smartBorders,withBorder)
+import XMonad.Layout.NoBorders
 import XMonad.Layout.ResizableTile
 import XMonad.Layout.MultiToggle
 import XMonad.Layout.MultiToggle.Instances
 import XMonad.Layout.PerWorkspace (onWorkspace)
 import XMonad.Layout.Minimize
 import XMonad.Layout.Maximize
+import XMonad.Layout.ToggleLayouts
+import XMonad.Layout.ComboP
 import XMonad.Layout.MagicFocus
 import XMonad.Layout.WindowNavigation
+import XMonad.Layout.WindowSwitcherDecoration
+import XMonad.Layout.DraggingVisualizer
 import XMonad.StackSet (RationalRect(..), currentTag)
 import XMonad.Hooks.DynamicLog
 import XMonad.Hooks.DynamicHooks
@@ -81,6 +85,7 @@ main = do
 		{ terminal           = "urxvtc"
 		, modMask            = mod4Mask
 		, focusFollowsMouse  = True
+		, clickJustFocuses   = True
 		, borderWidth        = 1
 		, normalBorderColor  = colorBlackAlt
 		, focusedBorderColor = colorGray
@@ -133,7 +138,7 @@ myTitleTheme = defaultTheme
 	, inactiveTextColor   = colorGray
 	, activeBorderColor   = colorGray
 	, activeColor         = colorBlackAlt
-	, activeTextColor     = colorWhiteAlt
+	, activeTextColor     = colorRed
 	, urgentBorderColor   = colorGray
 	, urgentTextColor     = colorGreen
 	, decoHeight          = 14
@@ -309,27 +314,35 @@ myWorkspaces = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
 -- LAYOUT CONFIG                                                                          --
 --------------------------------------------------------------------------------------------
 
--- Layouts (name must be diferent of Minimize, Maximize and Mirror)
-myTile = named "ResizableTall"     $ smartBorders $ ResizableTall 1 0.03 0.5 []
-myMirr = named "MirrResizableTall" $ smartBorders $ Mirror myTile
-myMosA = named "MosaicAlt"         $ smartBorders $ MosaicAlt M.empty
-myObig = named "OneBig"            $ smartBorders $ OneBig 0.75 0.65
-myTabs = named "Simple Tabbed"     $ smartBorders $ tabbed shrinkText myTitleTheme
-myFull = named "Full Tabbed"       $ smartBorders $ tabbedAlways shrinkText myTitleTheme
-myTabM = named "Master Tabbed"     $ smartBorders $ mastered 0.01 0.4 $ tabbed shrinkText myTitleTheme
-myFlat = named "Simple Float"      $ mouseResize  $ noFrillsDeco shrinkText myTitleTheme simplestFloat
-myGimp = named "Gimp MosaicAlt"    $ withIM (0.15) (Role "gimp-toolbox") $ reflectHoriz $ withIM (0.20) (Role "gimp-dock") myMosA
-myChat = named "Pidgin MosaicAlt"  $ withIM (0.20) (Title "Buddy List") $ Mirror $ ResizableTall 1 0.03 0.5 []
+-- Main Layouts
+myTile  = smartBorders $ toggleLayouts (named "ResizableTall [S]" myTileS) $ named "ResizableTall" $ ResizableTall 1 0.03 0.5 [] where
+	myTileS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ ResizableTall 1 0.03 0.5 [])
+myMirr  = smartBorders $ toggleLayouts (named "MirrResizableTall [S]" myMirrS) $ named "MirrResizableTall" $ Mirror $ ResizableTall 1 0.03 0.5 [] where
+	myMirrS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ Mirror $ ResizableTall 1 0.03 0.5 [])
+myMosA  = smartBorders $ toggleLayouts (named "MosaicAlt [S]" myMosAS) $ named "MosaicAlt" $ MosaicAlt M.empty where
+	myMosAS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ MosaicAlt M.empty)
+myOneB  = smartBorders $ toggleLayouts (named "OneBig [S]" myOneBS) $ named "OneBig" $ OneBig 0.75 0.65 where
+	myOneBS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ OneBig 0.75 0.65)
+myMTab  = smartBorders $ toggleLayouts (named "Mastered Tabbed [S]" myMTabS) $ named "Mastered Tabbed" $ mastered 0.01 0.4 $ tabbed shrinkText myTitleTheme where
+	myMTabS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ mastered 0.01 0.4 $ tabbed shrinkText myTitleTheme)
+
+-- Special Layouts
+myTabb  = smartBorders $ named "Tabbed" $ tabbed shrinkText myTitleTheme
+myTTab  = smartBorders $ named "Two Tabbed" $ combineTwoP (OneBig 0.75 0.75) (tabbed shrinkText myTitleTheme) (tabbed shrinkText myTitleTheme) (ClassName "Chromium")
+myFTab  = smartBorders $ named "Full Tabbed" $ tabbedAlways shrinkText myTitleTheme
+myFloat = named "Simplest Float" $ mouseResize  $ noFrillsDeco shrinkText myTitleTheme simplestFloat
+myGimp  = named "Gimp MosaicAlt" $ withIM (0.15) (Role "gimp-toolbox") $ reflectHoriz $ withIM (0.20) (Role "gimp-dock") myMosA
+myChat  = named "Pidgin MirrResizableTall" $ withIM (0.20) (Title "Buddy List") $ myMirr
 
 -- Tabbed transformer (W+f)
 data TABBED = TABBED deriving (Read, Show, Eq, Typeable)
 instance Transformer TABBED Window where
-	transform TABBED x k = k myFull (\_ -> x)
+	transform TABBED x k = k myFTab (\_ -> x)
 
 -- Floated transformer (W+ctl+f)
 data FLOATED = FLOATED deriving (Read, Show, Eq, Typeable)
 instance Transformer FLOATED Window where
-	transform FLOATED x k = k myFlat (\_ -> x)
+	transform FLOATED x k = k myFloat (\_ -> x)
 
 -- Layout hook
 myLayoutHook = avoidStruts
@@ -346,9 +359,9 @@ myLayoutHook = avoidStruts
 	$ onWorkspace (myWorkspaces !! 3) gimpLayouts --Workspace 3 layouts
 	$ onWorkspace (myWorkspaces !! 4) chatLayouts --Workspace 4 layouts
 	$ allLayouts where
-		allLayouts  = myTile ||| myObig ||| myMirr ||| myMosA ||| myTabM
-		webLayouts  = myTabs ||| myMirr ||| myTabM
-		codeLayouts = myTabM ||| myTile
+		allLayouts  = myTile ||| myOneB ||| myMirr ||| myMosA ||| myMTab
+		webLayouts  = myTabb ||| myTTab
+		codeLayouts = myMTab ||| myTile
 		gimpLayouts = myGimp
 		chatLayouts = myChat
 
@@ -552,7 +565,7 @@ myTempL      = (dzenBoxStyleL gray2BoxPP $ labelL "TEMP") ++! (dzenBoxStyleL blu
 myMemL       = (dzenBoxStyleL gray2BoxPP $ labelL "MEM") ++! (dzenBoxStyleL blueBoxPP memUsage)
 myCpuL       = (dzenBoxStyleL gray2BoxPP $ labelL "CPU") ++! (dzenBoxStyleL blueBoxPP $ cpuUsage "/tmp/haskell-cpu-usage.txt")
 myFsL        = (dzenBoxStyleL blue2BoxPP $ labelL "ROOT") ++! (dzenBoxStyleL whiteBoxPP $ fsPerc "/") ++! (dzenBoxStyleL blueBoxPP $ labelL "HOME") ++! (dzenBoxStyleL whiteBoxPP $ fsPerc "/home")
-myDateL      = (dzenBoxStyleL white2BBoxPP $ date "%A") ++! (dzenBoxStyleL whiteBoxPP $ date $ "%Y^fg(" ++ colorGray ++ ").^fg()%m^fg(" ++ colorGray ++ ").^fg()^fg(" ++ colorBlue ++ ")%d^fg() ^fg(" ++ colorGray ++ ")-^fg() %H^fg(" ++ colorGray ++ "):^fg()%M^fg(" ++ colorGray ++ "):^fg()^fg(" ++ colorGreen ++ ")%S^fg()") ++! (dzenClickStyleL calendarCA $ dzenBoxStyleL blueBoxPP $ labelL "CALENDAR")
+myDateL      = (dzenBoxStyleL white2BBoxPP $ date "%A") ++! (dzenBoxStyleL whiteBoxPP $ date $ "%Y^fg(" ++ colorGray ++ ").^fg()%m^fg(" ++ colorGray ++ ").^fg()^fg(" ++ colorRed ++ ")%d^fg() ^fg(" ++ colorGray ++ ")-^fg() %H^fg(" ++ colorGray ++ "):^fg()%M^fg(" ++ colorGray ++ "):^fg()^fg(" ++ colorGreen ++ ")%S^fg()") ++! (dzenClickStyleL calendarCA $ dzenBoxStyleL blueBoxPP $ labelL "CALENDAR")
 myUptimeL    = (dzenBoxStyleL blue2BoxPP $ labelL "UPTIME") ++! (dzenBoxStyleL whiteBoxPP uptime)
 myFocusL     = (dzenClickStyleL focusCA $ dzenBoxStyleL white2BBoxPP $ labelL "FOCUS") ++! (dzenBoxStyleL whiteBoxPP $ shortenL 100 logTitle)
 myLayoutL    = (dzenClickStyleL layoutCA $ dzenBoxStyleL blue2BoxPP $ labelL "LAYOUT") ++! (dzenBoxStyleL whiteBoxPP $ onLogger (layoutText . removeWord . removeWord) logLayout) where
@@ -633,10 +646,11 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 	, ((modMask .|. controlMask, xK_Down ), sendMessage $ Swap D)          --Swap focused window to down
 	--Layout management bindings
 	, ((modMask, xK_space), sendMessage NextLayout)                                                                                    --Rotate through the available layout algorithms
+	, ((modMask, xK_v ), sendMessage ToggleLayout)                                                                                     --Toggle window titles (can click drag to move windows)
 	, ((modMask .|. shiftMask, xK_space ), flashText myTextConfig 1 " Set to Default Layout " >> (setLayout $ XMonad.layoutHook conf)) --Reset layout to workspaces default
 	, ((modMask, xK_f), sendMessage $ XMonad.Layout.MultiToggle.Toggle TABBED)                                                         --Push layout into tabbed
 	, ((modMask .|. controlMask, xK_f), sendMessage $ XMonad.Layout.MultiToggle.Toggle FLOATED)                                        --Push layout into float
-	, ((modMask .|. shiftMask, xK_z), sendMessage $ Toggle MIRROR)                                                                     --Push layout into mirror
+	, ((modMask .|. shiftMask, xK_z), sendMessage $ XMonad.Layout.MultiToggle.Toggle MIRROR)                                           --Push layout into mirror
 	, ((modMask .|. shiftMask, xK_x), sendMessage $ XMonad.Layout.MultiToggle.Toggle REFLECTX)                                         --Reflect layout by X
 	, ((modMask .|. shiftMask, xK_y), sendMessage $ XMonad.Layout.MultiToggle.Toggle REFLECTY)                                         --Reflect layout by Y
 	--Gaps management bindings
