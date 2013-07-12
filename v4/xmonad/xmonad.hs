@@ -76,7 +76,6 @@ import DzenBoxLoggers
 -- Main
 main :: IO ()
 main = do
-	spawn "/home/nnoell/.xmonad/apps/haskell-cpu-usage.out 5" --launch haskell-cpu-usage app (See my github repo to get the app)
 	topLeftBar  <- spawnPipe $ dzenFlagsToStr dzenTopLeftFlags
 	topRightBar <- spawnPipe $ dzenFlagsToStr dzenTopRightFlags
 	botLeftBar  <- spawnPipe $ dzenFlagsToStr dzenBotLeftFlags
@@ -96,7 +95,7 @@ main = do
 		, handleEventHook    = myHandleEventHook
 		, keys               = myKeys
 		, mouseBindings      = myMouseBindings
-		, startupHook        = setDefaultCursor xC_left_ptr <+> (startTimer 1 >>= XS.put . TID)
+		, startupHook        = spawn "/home/nnoell/.xmonad/apps/haskell-cpu-usage.out 5" <+> setDefaultCursor xC_left_ptr <+> (startTimer 1 >>= XS.put . TID)
 		}
 
 
@@ -105,29 +104,29 @@ main = do
 --------------------------------------------------------------------------------------------
 
 -- Colors, fonts and paths
-dzenFont             = "-*-montecarlo-medium-r-normal-*-11-*-*-*-*-*-*-*"
-colorBlack           = "#020202" --Background
-colorBlackAlt        = "#1c1c1c" --Black Xdefaults
-colorGray            = "#444444" --Gray
-colorGrayAlt         = "#101010" --Gray dark
-colorWhite           = "#a9a6af" --Foreground
-colorWhiteAlt        = "#9d9d9d" --White dark
-colorMagenta         = "#8e82a2"
-colorBlue            = "#44aacc"
-colorBlueAlt         = "#3955c4"
-colorRed             = "#f7a16e"
-colorRedAlt          = "#e0105f"
-colorGreen           = "#66ff66"
-colorGreenAlt        = "#558965"
-boxLeftIcon          = "/home/nnoell/.icons/xbm_icons/subtle/boxleft.xbm"   --left icon of dzen logger boxes
-boxLeftIcon2         = "/home/nnoell/.icons/xbm_icons/subtle/boxleft2.xbm"  --left icon2 of dzen logger boxes
-boxRightIcon         = "/home/nnoell/.icons/xbm_icons/subtle/boxright.xbm"  --right icon of dzen logger boxes
-xRes                 = 1366
-yRes                 = 768
-panelHeight          = 16  --height of top and bottom panels
-boxHeight            = 12  --height of dzen logger box
-topPanelSepPos       = 950 --left-right alignment pos of top panel
-botPanelSepPos       = 400 --left-right alignment pos of bottom panel
+dzenFont       = "-*-montecarlo-medium-r-normal-*-11-*-*-*-*-*-*-*"
+colorBlack     = "#020202" --Background
+colorBlackAlt  = "#1c1c1c" --Black Xdefaults
+colorGray      = "#444444" --Gray
+colorGrayAlt   = "#101010" --Gray dark
+colorWhite     = "#a9a6af" --Foreground
+colorWhiteAlt  = "#9d9d9d" --White dark
+colorMagenta   = "#8e82a2"
+colorBlue      = "#44aacc"
+colorBlueAlt   = "#3955c4"
+colorRed       = "#f7a16e"
+colorRedAlt    = "#e0105f"
+colorGreen     = "#66ff66"
+colorGreenAlt  = "#558965"
+boxLeftIcon    = "/home/nnoell/.icons/xbm_icons/subtle/boxleft.xbm"   --left icon of dzen logger boxes
+boxLeftIcon2   = "/home/nnoell/.icons/xbm_icons/subtle/boxleft2.xbm"  --left icon2 of dzen logger boxes
+boxRightIcon   = "/home/nnoell/.icons/xbm_icons/subtle/boxright.xbm"  --right icon of dzen logger boxes
+xRes           = 1366
+yRes           = 768
+panelHeight    = 16  --height of top and bottom panels
+boxHeight      = 12  --height of dzen logger box
+topPanelSepPos = 950 --left-right alignment pos of top panel
+botPanelSepPos = 400 --left-right alignment pos of bottom panel
 
 -- Title theme
 myTitleTheme :: Theme
@@ -138,7 +137,7 @@ myTitleTheme = defaultTheme
 	, inactiveTextColor   = colorGray
 	, activeBorderColor   = colorGray
 	, activeColor         = colorBlackAlt
-	, activeTextColor     = colorRed
+	, activeTextColor     = colorBlue
 	, urgentBorderColor   = colorGray
 	, urgentTextColor     = colorGreen
 	, decoHeight          = 14
@@ -147,18 +146,18 @@ myTitleTheme = defaultTheme
 -- Prompt theme
 myXPConfig :: XPConfig
 myXPConfig = defaultXPConfig
-	{ font                = dzenFont
-	, bgColor             = colorBlack
-	, fgColor             = colorWhite
-	, bgHLight            = colorBlue
-	, fgHLight            = colorBlack
-	, borderColor         = colorGrayAlt
-	, promptBorderWidth   = 1
-	, height              = panelHeight
-	, position            = Top
-	, historySize         = 100
-	, historyFilter       = deleteConsecutive
-	, autoComplete        = Nothing
+	{ font              = dzenFont
+	, bgColor           = colorBlack
+	, fgColor           = colorWhite
+	, bgHLight          = colorBlue
+	, fgHLight          = colorBlack
+	, borderColor       = colorGrayAlt
+	, promptBorderWidth = 1
+	, height            = panelHeight
+	, position          = Top
+	, historySize       = 100
+	, historyFilter     = deleteConsecutive
+	, autoComplete      = Nothing
 	}
 
 -- GridSelect color scheme
@@ -310,8 +309,8 @@ myWorkspaces :: [WorkspaceId]
 myWorkspaces = map show $ [1..9] ++ [0]
 
 -- Workspace names
-workspacesNames :: [WorkspaceId]
-workspacesNames = ["Terminal", "Network", "Development", "Graphics", "Chatting", "Video", "Alternate", "Alternate", "Alternate", "Alternate" ]
+workspaceNames :: [WorkspaceId]
+workspaceNames = ["Terminal", "Network", "Development", "Graphics", "Chatting", "Video", "Alternate", "Alternate", "Alternate", "Alternate"]
 
 
 --------------------------------------------------------------------------------------------
@@ -386,11 +385,11 @@ myHandleEventHook = fullscreenEventHook <+> docksEventHook <+> clockEventHook <+
 		(TID t) <- XS.get                 --get the recent Timer id
 		handleTimer t e $ do              --run the following if e matches the id
 		    startTimer 1 >>= XS.put . TID --restart the timer, store the new id
-		    ask >>= logHook.config        --get the loghook and run it
+		    ask >>= logHook . config      --get the loghook and run it
 		    return Nothing                --return required type
 		return $ All True                 --return required type
 	notFocusFloat = followOnlyIf (fmap not isFloat) where --Do not focusFollowMouse on Float layout
-		isFloat = fmap (isSuffixOf "Simple Float") $ gets (description . W.layout . W.workspace . W.current . windowset)
+		isFloat = fmap (isSuffixOf "Simplest Float") $ gets (description . W.layout . W.workspace . W.current . windowset)
 
 
 --------------------------------------------------------------------------------------------
@@ -569,7 +568,7 @@ myTempL      = (dzenBoxStyleL gray2BoxPP $ labelL "TEMP") ++! (dzenBoxStyleL blu
 myMemL       = (dzenBoxStyleL gray2BoxPP $ labelL "MEM") ++! (dzenBoxStyleL blueBoxPP memUsage)
 myCpuL       = (dzenBoxStyleL gray2BoxPP $ labelL "CPU") ++! (dzenBoxStyleL blueBoxPP $ cpuUsage "/tmp/haskell-cpu-usage.txt")
 myFsL        = (dzenBoxStyleL blue2BoxPP $ labelL "ROOT") ++! (dzenBoxStyleL whiteBoxPP $ fsPerc "/") ++! (dzenBoxStyleL blueBoxPP $ labelL "HOME") ++! (dzenBoxStyleL whiteBoxPP $ fsPerc "/home")
-myDateL      = (dzenBoxStyleL white2BBoxPP $ date "%A") ++! (dzenBoxStyleL whiteBoxPP $ date $ "%Y^fg(" ++ colorGray ++ ").^fg()%m^fg(" ++ colorGray ++ ").^fg()^fg(" ++ colorRed ++ ")%d^fg() ^fg(" ++ colorGray ++ ")-^fg() %H^fg(" ++ colorGray ++ "):^fg()%M^fg(" ++ colorGray ++ "):^fg()^fg(" ++ colorGreen ++ ")%S^fg()") ++! (dzenClickStyleL calendarCA $ dzenBoxStyleL blueBoxPP $ labelL "CALENDAR")
+myDateL      = (dzenBoxStyleL white2BBoxPP $ date "%A") ++! (dzenBoxStyleL whiteBoxPP $ date $ "%Y^fg(" ++ colorGray ++ ").^fg()%m^fg(" ++ colorGray ++ ").^fg()^fg(" ++ colorBlue ++ ")%d^fg() ^fg(" ++ colorGray ++ ")-^fg() %H^fg(" ++ colorGray ++ "):^fg()%M^fg(" ++ colorGray ++ "):^fg()^fg(" ++ colorGreen ++ ")%S^fg()") ++! (dzenClickStyleL calendarCA $ dzenBoxStyleL blueBoxPP $ labelL "CALENDAR")
 myUptimeL    = (dzenBoxStyleL blue2BoxPP $ labelL "UPTIME") ++! (dzenBoxStyleL whiteBoxPP uptime)
 myFocusL     = (dzenClickStyleL focusCA $ dzenBoxStyleL white2BBoxPP $ labelL "FOCUS") ++! (dzenBoxStyleL whiteBoxPP $ shortenL 100 logTitle)
 myLayoutL    = (dzenClickStyleL layoutCA $ dzenBoxStyleL blue2BoxPP $ labelL "LAYOUT") ++! (dzenBoxStyleL whiteBoxPP $ onLogger (layoutText . removeWord . removeWord) logLayout) where
@@ -583,7 +582,7 @@ myLayoutL    = (dzenClickStyleL layoutCA $ dzenBoxStyleL blue2BoxPP $ labelL "LA
 		| otherwise                    = "^fg(" ++ colorWhiteAlt ++ ")" ++ xs
 myWorkspaceL = (dzenClickStyleL workspaceCA $ dzenBoxStyleL blue2BoxPP $ labelL "WORKSPACE") ++! (dzenBoxStyleL whiteBoxPP $ onLogger namedWorkspaces logCurrent) where
 	namedWorkspaces w
-		| (elem w $ map show [0..9]) == True = "^fg(" ++ colorGreen ++ ")" ++ w ++ "^fg(" ++ colorGray ++ ")|^fg()" ++ workspacesNames !! (mod ((read w::Int) - 1) 10)
+		| (elem w $ map show [0..9]) == True = "^fg(" ++ colorGreen ++ ")" ++ w ++ "^fg(" ++ colorGray ++ ")|^fg()" ++ workspaceNames !! (mod ((read w::Int) - 1) 10)
 		| otherwise                          = "^fg(" ++ colorRed ++ ")x^fg(" ++ colorGray ++ ")|^fg()" ++ w
 
 
