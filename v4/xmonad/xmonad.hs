@@ -7,6 +7,13 @@
 --          modules. Compile it manually with "ghc -o <outputName> xmonad.hs". EG:        --
 --          $ cd ~/.xmonad/                                                               --
 --          $ ghc -o xmonad-x86_64-linux xmonad.hs                                        --
+-- Note2  : I use a little hack (thanks to DarthFennec) to send an X event after a        --
+--          specified time period (one second) in order to get always updated my status   --
+--          bars. This may crash xmonad if you try to reload the configuration on the fly --
+--          with "xmonad --restart" or mod+q. I suggest to stop xmonad and start it again --
+--          when changing xmonad.hs. You can disable this by removing clockEventHook and  --
+--          handleTimerEvent from "myHandleEventHook" and (startTimer 1 >>= XS.put . TID) --
+--			from "startupHook".                                                           --
 --------------------------------------------------------------------------------------------
 
 -- Language
@@ -73,6 +80,7 @@ import qualified XMonad.Util.ExtensibleState as XS
 -- non-official modules
 import DzenBoxLoggers
 
+
 -- Main
 main :: IO ()
 main = do
@@ -87,7 +95,7 @@ main = do
 		, clickJustFocuses   = True
 		, borderWidth        = 1
 		, normalBorderColor  = colorBlackAlt
-		, focusedBorderColor = colorGray
+		, focusedBorderColor = colorWhiteAlt2
 		, layoutHook         = myLayoutHook
 		, workspaces         = myWorkspaces
 		, manageHook         = myManageHook <+> manageScratchPad <+> manageDocks <+> dynamicMasterHook
@@ -109,8 +117,12 @@ colorBlack     = "#020202" --Background
 colorBlackAlt  = "#1c1c1c" --Black Xdefaults
 colorGray      = "#444444" --Gray
 colorGrayAlt   = "#101010" --Gray dark
+colorGrayAlt2  = "#404040"
+colorGrayAlt3  = "#252525"
 colorWhite     = "#a9a6af" --Foreground
 colorWhiteAlt  = "#9d9d9d" --White dark
+colorWhiteAlt2 = "#b5b3b3"
+colorWhiteAlt3 = "#707070"
 colorMagenta   = "#8e82a2"
 colorBlue      = "#44aacc"
 colorBlueAlt   = "#3955c4"
@@ -123,8 +135,8 @@ boxLeftIcon2   = "/home/nnoell/.icons/xbm_icons/subtle/boxleft2.xbm"  --left ico
 boxRightIcon   = "/home/nnoell/.icons/xbm_icons/subtle/boxright.xbm"  --right icon of dzen logger boxes
 xRes           = 1366
 yRes           = 768
-panelHeight    = 16  --height of top and bottom panels
-boxHeight      = 12  --height of dzen logger box
+panelHeight    = 14  --height of top and bottom panels
+boxHeight      = 14  --height of dzen logger box
 topPanelSepPos = 950 --left-right alignment pos of top panel
 botPanelSepPos = 400 --left-right alignment pos of bottom panel
 
@@ -132,12 +144,12 @@ botPanelSepPos = 400 --left-right alignment pos of bottom panel
 myTitleTheme :: Theme
 myTitleTheme = defaultTheme
 	{ fontName            = dzenFont
-	, inactiveBorderColor = colorBlackAlt
-	, inactiveColor       = colorBlack
-	, inactiveTextColor   = colorGray
-	, activeBorderColor   = colorGray
-	, activeColor         = colorBlackAlt
-	, activeTextColor     = colorBlue
+	, inactiveBorderColor = colorGrayAlt2
+	, inactiveColor       = colorGrayAlt3
+	, inactiveTextColor   = colorWhiteAlt3
+	, activeBorderColor   = colorGrayAlt2
+	, activeColor         = colorGrayAlt2
+	, activeTextColor     = colorWhiteAlt2
 	, urgentBorderColor   = colorGray
 	, urgentTextColor     = colorGreen
 	, decoHeight          = 14
@@ -271,19 +283,19 @@ green2BBoxPP = BoxPP
 calendarCA :: CA
 calendarCA = CA
 	{ leftClickCA   = "/home/nnoell/bin/dzencal.sh"
-	, middleClickCA = ""
-	, rightClickCA  = ""
-	, wheelUpCA     = ""
-	, wheelDownCA   = ""
+	, middleClickCA = "/home/nnoell/bin/dzencal.sh"
+	, rightClickCA  = "/home/nnoell/bin/dzencal.sh"
+	, wheelUpCA     = "/home/nnoell/bin/dzencal.sh"
+	, wheelDownCA   = "/home/nnoell/bin/dzencal.sh"
 	}
 
 layoutCA :: CA
 layoutCA = CA
 	{ leftClickCA   = "/usr/bin/xdotool key super+space"
-	, middleClickCA = ""
+	, middleClickCA = "/usr/bin/xdotool key super+v"
 	, rightClickCA  = "/usr/bin/xdotool key super+shift+space"
-	, wheelUpCA     = ""
-	, wheelDownCA   = ""
+	, wheelUpCA     = "/usr/bin/xdotool key super+f"
+	, wheelDownCA   = "/usr/bin/xdotool key super+control+f"
 	}
 
 workspaceCA :: CA
@@ -312,30 +324,22 @@ myWorkspaces = map show $ [1..9] ++ [0]
 workspaceNames :: [WorkspaceId]
 workspaceNames = ["Terminal", "Network", "Development", "Graphics", "Chatting", "Video", "Alternate", "Alternate", "Alternate", "Alternate"]
 
+-- Layout names (must be one word name and not equal to: Mirror, ReflectX, ReflectY, Switcher, Normal and Unique)
+myTileName = "Tiled"
+myMirrName = "Mirror"
+myMosAName = "Mosaic"
+myOneBName = "OneBig"
+myMTabName = "MstrTab"
+myChatName = "Chat"
+myTabbName = "Tabbed"
+myTTabName = "TwoTab"
+myFTabName = "Full"
+myFloaName = "Float"
+
 
 --------------------------------------------------------------------------------------------
 -- LAYOUT CONFIG                                                                          --
 --------------------------------------------------------------------------------------------
-
--- Main Layouts
-myTile  = smartBorders $ toggleLayouts (named "ResizableTall [S]" myTileS) $ named "ResizableTall" $ ResizableTall 1 0.03 0.5 [] where
-	myTileS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ ResizableTall 1 0.03 0.5 [])
-myMirr  = smartBorders $ toggleLayouts (named "MirrResizableTall [S]" myMirrS) $ named "MirrResizableTall" $ Mirror $ ResizableTall 1 0.03 0.5 [] where
-	myMirrS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ Mirror $ ResizableTall 1 0.03 0.5 [])
-myMosA  = smartBorders $ toggleLayouts (named "MosaicAlt [S]" myMosAS) $ named "MosaicAlt" $ MosaicAlt M.empty where
-	myMosAS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ MosaicAlt M.empty)
-myOneB  = smartBorders $ toggleLayouts (named "OneBig [S]" myOneBS) $ named "OneBig" $ OneBig 0.75 0.65 where
-	myOneBS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ OneBig 0.75 0.65)
-myMTab  = smartBorders $ toggleLayouts (named "Mastered Tabbed [S]" myMTabS) $ named "Mastered Tabbed" $ mastered 0.01 0.4 $ tabbed shrinkText myTitleTheme where
-	myMTabS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ mastered 0.01 0.4 $ tabbed shrinkText myTitleTheme)
-
--- Special Layouts
-myTabb  = smartBorders $ named "Tabbed" $ tabbed shrinkText myTitleTheme
-myTTab  = smartBorders $ named "Two Tabbed" $ combineTwoP (OneBig 0.75 0.75) (tabbed shrinkText myTitleTheme) (tabbed shrinkText myTitleTheme) (ClassName "Chromium")
-myFTab  = smartBorders $ named "Full Tabbed" $ tabbedAlways shrinkText myTitleTheme
-myFloat = named "Simplest Float" $ mouseResize  $ noFrillsDeco shrinkText myTitleTheme simplestFloat
-myGimp  = named "Gimp MosaicAlt" $ withIM (0.15) (Role "gimp-toolbox") $ reflectHoriz $ withIM (0.20) (Role "gimp-dock") myMosA
-myChat  = named "Pidgin MirrResizableTall" $ withIM (0.20) (Title "Buddy List") $ myMirr
 
 -- Tabbed transformer (W+f)
 data TABBED = TABBED deriving (Read, Show, Eq, Typeable)
@@ -345,11 +349,31 @@ instance Transformer TABBED Window where
 -- Floated transformer (W+ctl+f)
 data FLOATED = FLOATED deriving (Read, Show, Eq, Typeable)
 instance Transformer FLOATED Window where
-	transform FLOATED x k = k myFloat (\_ -> x)
+	transform FLOATED x k = k myFloa (\_ -> x)
+
+-- Switcher Layouts
+myTile = smartBorders $ toggleLayouts (named ("Switcher " ++ myTileName) myTileS) $ named ("Normal " ++ myTileName) $ ResizableTall 1 0.03 0.5 [] where
+	myTileS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ ResizableTall 1 0.03 0.5 [])
+myMirr = smartBorders $ toggleLayouts (named ("Switcher " ++ myMirrName) myMirrS) $ named ("Normal " ++ myMirrName) $ Mirror $ ResizableTall 1 0.03 0.5 [] where
+	myMirrS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ Mirror $ ResizableTall 1 0.03 0.5 [])
+myMosA = smartBorders $ toggleLayouts (named ("Switcher " ++ myMosAName) myMosAS) $ named ("Normal " ++ myMosAName) $ MosaicAlt M.empty where
+	myMosAS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ MosaicAlt M.empty)
+myOneB = smartBorders $ toggleLayouts (named ("Switcher " ++ myOneBName) myOneBS) $ named ("Normal " ++ myOneBName) $ OneBig 0.75 0.65 where
+	myOneBS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ OneBig 0.75 0.65)
+myMTab = smartBorders $ toggleLayouts (named ("Switcher " ++ myMTabName) myMTabS) $ named ("Normal " ++ myMTabName) $ mastered 0.01 0.4 $ tabbed shrinkText myTitleTheme where
+	myMTabS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ mastered 0.01 0.4 $ tabbed shrinkText myTitleTheme)
+myChat = smartBorders $ toggleLayouts (named ("Switcher " ++ myChatName) $ withIM (0.20) (Title "Buddy List") myChatS) (named ("Normal " ++ myChatName) $ withIM (0.20) (Title "Buddy List") $ MosaicAlt M.empty) where
+	myChatS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ MosaicAlt M.empty)
+
+-- Unique Layouts
+myTabb = smartBorders $ named ("Unique " ++ myTabbName) $ tabbed shrinkText myTitleTheme
+myTTab = smartBorders $ named ("Unique " ++ myTTabName) $ combineTwoP (OneBig 0.75 0.75) (tabbed shrinkText myTitleTheme) (tabbed shrinkText myTitleTheme) (ClassName "Chromium")
+myFTab = smartBorders $ named ("Unique " ++ myFTabName) $ tabbedAlways shrinkText myTitleTheme
+myFloa = named ("Unique " ++ myFloaName) $ mouseResize $ noFrillsDeco shrinkText myTitleTheme simplestFloat
 
 -- Layout hook
 myLayoutHook = avoidStruts
-	$ windowNavigation
+	$ configurableNavigation noNavigateBorders
 	$ minimize
 	$ maximize
 	$ mkToggle (single TABBED)
@@ -357,16 +381,14 @@ myLayoutHook = avoidStruts
 	$ mkToggle (single MIRROR)
 	$ mkToggle (single REFLECTX)
 	$ mkToggle (single REFLECTY)
-	$ onWorkspace (myWorkspaces !! 1) webLayouts  --Workspace 1 layouts
-	$ onWorkspace (myWorkspaces !! 2) codeLayouts --Workspace 2 layouts
-	$ onWorkspace (myWorkspaces !! 3) gimpLayouts --Workspace 3 layouts
-	$ onWorkspace (myWorkspaces !! 4) chatLayouts --Workspace 4 layouts
+	$ onWorkspace (myWorkspaces !! 1) webLayouts
+	$ onWorkspace (myWorkspaces !! 2) codeLayouts
+	$ onWorkspace (myWorkspaces !! 4) chatLayouts
 	$ allLayouts where
-		allLayouts  = myTile ||| myOneB ||| myMirr ||| myMosA ||| myMTab
 		webLayouts  = myTabb ||| myTTab
-		codeLayouts = myMTab ||| myTile
-		gimpLayouts = myGimp
+		codeLayouts = myMTab ||| myOneB ||| myTile
 		chatLayouts = myChat
+		allLayouts  = myTile ||| myOneB ||| myMirr ||| myMosA ||| myMTab
 
 
 --------------------------------------------------------------------------------------------
@@ -389,7 +411,7 @@ myHandleEventHook = fullscreenEventHook <+> docksEventHook <+> clockEventHook <+
 		    return Nothing                --return required type
 		return $ All True                 --return required type
 	notFocusFloat = followOnlyIf (fmap not isFloat) where --Do not focusFollowMouse on Float layout
-		isFloat = fmap (isSuffixOf "Simplest Float") $ gets (description . W.layout . W.workspace . W.current . windowset)
+		isFloat = fmap (isSuffixOf myFloaName) $ gets (description . W.layout . W.workspace . W.current . windowset)
 
 
 --------------------------------------------------------------------------------------------
@@ -398,47 +420,41 @@ myHandleEventHook = fullscreenEventHook <+> docksEventHook <+> clockEventHook <+
 
 -- Scratchpad (W+º)
 manageScratchPad :: ManageHook
-manageScratchPad = scratchpadManageHook (W.RationalRect (0) (1/50) (1) (3/4))
+manageScratchPad = scratchpadManageHook $ W.RationalRect (0) (panelHeight/yRes) (1) (3/4)
 scratchPad = scratchpadSpawnActionCustom "urxvtc -name scratchpad"
 
 -- Manage hook
 myManageHook :: ManageHook
 myManageHook = composeAll . concat $
-	[ [resource  =? r --> doIgnore                         | r <- myIgnores] --ignore desktop
-	, [className =? c --> doShift (myWorkspaces !! 1)      | c <- myWebS   ] --move myWebS windows to workspace 1 by classname
-	, [className =? c --> doShift (myWorkspaces !! 2)      | c <- myCodeS  ] --move myCodeS windows to workspace 2 by classname
-	, [className =? c --> doShift (myWorkspaces !! 4)      | c <- myChatS  ] --move myChatS windows to workspace 4 by classname
-	, [className =? c --> doShift (myWorkspaces !! 3)      | c <- myGfxS   ] --move myGfxS windows to workspace 4 by classname
-	, [className =? c --> doShiftAndGo (myWorkspaces !! 5) | c <- myAlt1S  ] --move myGameS windows to workspace 5 by classname and shift
-	, [className =? c --> doShift (myWorkspaces !! 7)      | c <- myAlt3S  ] --move myOtherS windows to workspace 5 by classname and shift
-	, [className =? c --> doCenterFloat                    | c <- myFloatCC] --float center geometry by classname
-	, [name      =? n --> doCenterFloat                    | n <- myFloatCN] --float center geometry by name
-	, [name      =? n --> doSideFloat NW                   | n <- myFloatSN] --float side NW geometry by name
-	, [className =? c --> doF W.focusDown                  | c <- myFocusDC] --dont focus on launching by classname
-	, [isFullscreen   --> doFullFloat]
+	[ [ resource  =? r --> doIgnore                    | r <- myIgnores ]
+	, [ className =? c --> doShift (myWorkspaces !! 1) | c <- myWebS    ]
+	, [ className =? c --> doShift (myWorkspaces !! 2) | c <- myCodeS   ]
+	, [ className =? c --> doShift (myWorkspaces !! 4) | c <- myChatS   ]
+	, [ className =? c --> doShift (myWorkspaces !! 3) | c <- myGfxS    ]
+	, [ className =? c --> doShift (myWorkspaces !! 7) | c <- myAlt3S   ]
+	, [ className =? c --> doCenterFloat               | c <- myFloatCC ]
+	, [ name      =? n --> doCenterFloat               | n <- myFloatCN ]
+	, [ name      =? n --> doSideFloat NW              | n <- myFloatSN ]
+	, [ className =? c --> doF W.focusDown             | c <- myFocusDC ]
+	, [ isFullscreen   --> doFullFloat ]
 	] where
-		doShiftAndGo ws = doF (W.greedyView ws) <+> doShift ws
-		role            = stringProperty "WM_WINDOW_ROLE"
 		name            = stringProperty "WM_NAME"
 		myIgnores       = ["desktop","desktop_window"]
 		myWebS          = ["Chromium","Firefox", "Opera"]
-		myCodeS         = ["NetBeans IDE 7.2"]
+		myCodeS         = ["NetBeans IDE 7.3"]
 		myGfxS          = ["Gimp", "gimp", "GIMP"]
 		myChatS         = ["Pidgin", "Xchat"]
-		myAlt1S         = ["zsnes"]
 		myAlt3S         = ["Amule", "Transmission-gtk"]
 		myFloatCC       = ["MPlayer", "mplayer2", "File-roller", "zsnes", "Gcalctool", "Exo-helper-1", "Gksu", "PSX", "Galculator", "Nvidia-settings", "XFontSel"
-						  , "XCalc", "XClock", "Desmume", "Ossxmix", "Xvidcap", "Main", "Wicd-client.py", "com-mathworks-util-PostVMInit", "MATLAB"]
-		myFloatCN       = ["ePSXe - Enhanced PSX emulator", "Seleccione Archivo", "Config Video", "Testing plugin", "Config Sound", "Config Cdrom", "Config Bios"
-						  , "Config Netplay", "Config Memcards", "About ePSXe", "Config Controller", "Config Gamepads", "Select one or more files to open"
-						  , "Add media", "Choose a file", "Open Image", "File Operation Progress", "Firefox Preferences", "Preferences", "Search Engines"
-						  , "Set up sync", "Passwords and Exceptions", "Autofill Options", "Rename File", "Copying files", "Moving files", "File Properties", "Replace", ""]
+						  , "XCalc", "XClock", "Ossxmix", "Xvidcap", "Main", "Wicd-client.py"]
+		myFloatCN       = ["Choose a file", "Open Image", "File Operation Progress", "Firefox Preferences", "Preferences", "Search Engines", "Set up sync"
+						  ,"Passwords and Exceptions", "Autofill Options", "Rename File", "Copying files", "Moving files", "File Properties", "Replace", ""]
 		myFloatSN       = ["Event Tester"]
 		myFocusDC       = ["Event Tester", "Notify-osd"]
 
 
 --------------------------------------------------------------------------------------------
--- DZEN STATUS BARS CONFIG                                                                     --
+-- DZEN STATUS BARS CONFIG                                                                --
 --------------------------------------------------------------------------------------------
 
 -- urgencyHook
@@ -513,9 +529,8 @@ dzenBotLeftFlags = DF
 
 -- Bottom left bar logHook
 myBotLeftLogHook :: Handle -> X ()
-myBotLeftLogHook h = dynamicLogWithPP $ defaultPP
+myBotLeftLogHook h = dynamicLogWithPP . namedScratchpadFilterOutWorkspacePP $ defaultPP
 	{ ppOutput          = hPutStrLn h
-	, ppSort            = fmap (namedScratchpadFilterOutWorkspace .) (ppSort defaultPP) --hide "NSP" from workspace list
 	, ppOrder           = \(ws:l:_:x) -> [ws] ++ x
 	, ppSep             = " "
 	, ppWsSep           = ""
@@ -574,12 +589,13 @@ myFocusL     = (dzenClickStyleL focusCA $ dzenBoxStyleL white2BBoxPP $ labelL "F
 myLayoutL    = (dzenClickStyleL layoutCA $ dzenBoxStyleL blue2BoxPP $ labelL "LAYOUT") ++! (dzenBoxStyleL whiteBoxPP $ onLogger (layoutText . removeWord . removeWord) logLayout) where
 	removeWord = tail . dropWhile (/= ' ')
 	layoutText xs
-		| isPrefixOf "Mirror" xs       = layoutText $ removeWord xs ++ " [M]"
-		| isPrefixOf "ReflectY" xs     = layoutText $ removeWord xs ++ " [Y]"
-		| isPrefixOf "ReflectX" xs     = layoutText $ removeWord xs ++ " [X]"
-		| isPrefixOf "Simple Float" xs = "^fg(" ++ colorGreen ++ ")" ++ xs
-		| isPrefixOf "Full Tabbed" xs  = "^fg(" ++ colorRed ++ ")" ++ xs
-		| otherwise                    = "^fg(" ++ colorWhiteAlt ++ ")" ++ xs
+		| isPrefixOf "Mirror" xs   = layoutText $ removeWord xs ++ " ^fg(" ++ colorBlue ++ ")M^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
+		| isPrefixOf "ReflectY" xs = layoutText $ removeWord xs ++ " ^fg(" ++ colorBlue ++ ")Y^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
+		| isPrefixOf "ReflectX" xs = layoutText $ removeWord xs ++ " ^fg(" ++ colorBlue ++ ")X^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
+		| isPrefixOf "Switcher" xs = layoutText $ removeWord xs ++ " ^fg(" ++ colorRed ++ ")S^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
+		| isPrefixOf "Normal" xs   = layoutText $ removeWord xs ++ " ^fg(" ++ colorGreen ++ ")N^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
+		| isPrefixOf "Unique" xs   = layoutText $ removeWord xs ++ " ^fg(" ++ colorGreen ++ ")U^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
+		| otherwise                = concat $ reverse $ words xs
 myWorkspaceL = (dzenClickStyleL workspaceCA $ dzenBoxStyleL blue2BoxPP $ labelL "WORKSPACE") ++! (dzenBoxStyleL whiteBoxPP $ onLogger namedWorkspaces logCurrent) where
 	namedWorkspaces w
 		| (elem w $ map show [0..9]) == True = "^fg(" ++ colorGreen ++ ")" ++ w ++ "^fg(" ++ colorGray ++ ")|^fg()" ++ workspaceNames !! (mod ((read w::Int) - 1) 10)
