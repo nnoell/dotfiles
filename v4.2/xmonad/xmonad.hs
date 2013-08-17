@@ -13,7 +13,7 @@
 --          with "xmonad --restart" or mod+q. I suggest to stop xmonad and start it again --
 --          when changing xmonad.hs. You can disable this by removing clockEventHook and  --
 --          handleTimerEvent from "myHandleEventHook" and (startTimer 1 >>= XS.put . TID) --
---			from "startupHook".                                                           --
+--          from "startupHook".                                                           --
 --------------------------------------------------------------------------------------------
 
 -- Language
