@@ -611,7 +611,7 @@ myKeys :: XConfig Layout -> M.Map (KeyMask, KeySym) (X ())
 myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 	--Xmonad bindings
 	[((modMask .|. shiftMask, xK_q), io (exitWith ExitSuccess))          --Quit xmonad
-	, ((modMask, xK_q), restart "xmonad" True)                           --Restart xmonad
+	, ((modMask, xK_q), killAndRestart)                                  --Restart xmonad
 	, ((mod1Mask, xK_F2), shellPrompt myXPConfig)                        --Launch Xmonad shell prompt
 	, ((modMask, xK_F2), xmonadPrompt myXPConfig)                        --Launch Xmonad prompt
 	, ((mod1Mask, xK_F3), manPrompt myXPConfig)                          --Launch man prompt
@@ -707,6 +707,9 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 	] where
 		fullFloatFocused = withFocused $ \f -> windows =<< appEndo `fmap` runQuery doFullFloat f
 		rectFloatFocused = withFocused $ \f -> windows =<< appEndo `fmap` runQuery (doRectFloat $ RationalRect 0.05 0.05 0.9 0.9) f
+		killAndRestart = do
+			spawn "/usr/bin/killall dzen2 haskell-cpu-usage.out"
+			restart "xmonad" True
 
 -- Mouse bindings
 myMouseBindings :: XConfig Layout -> M.Map (KeyMask, Button) (Window -> X ())
