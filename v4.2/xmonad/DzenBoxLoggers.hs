@@ -28,6 +28,7 @@ module DzenBoxLoggers
 import XMonad (liftIO)
 import XMonad.Util.Loggers
 import StatFS
+import Control.Applicative
 import Control.Exception as E
 
 -- Dzen flags
@@ -102,32 +103,15 @@ dzenClickStyle ca t = "^ca(1," ++ leftClickCA ca ++
 
 -- Logger version of dzenBoxStyle
 dzenBoxStyleL :: BoxPP -> Logger -> Logger
-dzenBoxStyleL bpp l = do
-	log <- l
-	let text = do
-		t <- log
-		return $ dzenBoxStyle bpp t
-	return text
+dzenBoxStyleL bpp l = (fmap . fmap) (dzenBoxStyle bpp) l
 
 -- Logger version of dzenClickStyle
 dzenClickStyleL :: CA -> Logger -> Logger
-dzenClickStyleL ca l = do
-	log <- l
-	let text = do
-		t <- log
-		return $ dzenClickStyle ca t
-	return text
+dzenClickStyleL ca l = (fmap . fmap) (dzenClickStyle ca) l
 
 -- Concat two Loggers
 (++!) :: Logger -> Logger -> Logger
-l1 ++! l2 = do
-	log1 <- l1
-	log2 <- l2
-	let text = do
-		str1 <- log1
-		str2 <- log2
-		return $ str1 ++ str2
-	return text
+l1 ++! l2 = (liftA2 . liftA2) (++) l1 l2
 
 -- Label
 labelL :: String -> Logger
