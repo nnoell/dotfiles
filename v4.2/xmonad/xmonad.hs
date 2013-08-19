@@ -7,20 +7,14 @@
 --          modules. Compile it manually with "ghc -o <outputName> xmonad.hs". EG:        --
 --          $ cd ~/.xmonad/                                                               --
 --          $ ghc -o xmonad-x86_64-linux xmonad.hs                                        --
--- Note2  : I use a little hack (thanks to DarthFennec) to send an X event after a        --
---          specified time period (one second) in order to get always updated my status   --
---          bars. This may crash xmonad if you try to reload the configuration on the fly --
---          with "xmonad --restart" or mod+q. I suggest to stop xmonad and start it again --
---          when changing xmonad.hs. You can disable this by removing clockEventHook and  --
---          handleTimerEvent from "myHandleEventHook" and (startTimer 1 >>= XS.put . TID) --
---          from "startupHook".                                                           --
 --------------------------------------------------------------------------------------------
 
--- Language
+-- Options
 {-# LANGUAGE DeriveDataTypeable, NoMonomorphismRestriction, MultiParamTypeClasses, ImplicitParams #-}
 
 -- Modules
 import XMonad
+import XMonad.StackSet (RationalRect(..), currentTag)
 import XMonad.Layout
 import XMonad.Layout.IM
 import XMonad.Layout.Named
@@ -44,7 +38,6 @@ import XMonad.Layout.MagicFocus
 import XMonad.Layout.WindowNavigation
 import XMonad.Layout.WindowSwitcherDecoration
 import XMonad.Layout.DraggingVisualizer
-import XMonad.StackSet (RationalRect(..), currentTag)
 import XMonad.Hooks.DynamicLog
 import XMonad.Hooks.DynamicHooks
 import XMonad.Hooks.ManageDocks
@@ -66,22 +59,27 @@ import XMonad.Actions.CycleWS
 import XMonad.Actions.ShowText
 import XMonad.Actions.GridSelect
 import XMonad.Actions.MouseResize
+import XMonad.Actions.FloatKeys
 import Data.Monoid
 import Data.List
 import Graphics.X11.ExtraTypes.XF86
 import System.Exit
 import System.IO (Handle, hPutStrLn)
+import Control.Concurrent (threadDelay)
 import Control.Exception as E
 import qualified XMonad.StackSet as W
 import qualified Data.Map as M
 import qualified XMonad.Actions.FlexibleResize as Flex
 import qualified XMonad.Util.ExtensibleState as XS
 
--- non-official modules
+-- Non-official modules
 import DzenBoxLoggers
 
 
--- Main
+--------------------------------------------------------------------------------------------
+-- MAIN                                                                                   --
+--------------------------------------------------------------------------------------------
+
 main :: IO ()
 main = do
 	topLeftBar  <- spawnPipe $ dzenFlagsToStr dzenTopLeftFlags
@@ -103,7 +101,7 @@ main = do
 		, handleEventHook    = myHandleEventHook
 		, keys               = myKeys
 		, mouseBindings      = myMouseBindings
-		, startupHook        = spawn "/home/nnoell/.xmonad/apps/haskell-cpu-usage.out 5" <+> setDefaultCursor xC_left_ptr <+> (startTimer 1 >>= XS.put . TID)
+		, startupHook        = myStartupHook
 		}
 
 
@@ -338,6 +336,40 @@ myFloaName = "Float"
 
 
 --------------------------------------------------------------------------------------------
+-- STARTUP HOOK CONFIG                                                                    --
+--------------------------------------------------------------------------------------------
+
+-- Startup Hook
+myStartupHook = spawn "/home/nnoell/.xmonad/apps/haskell-cpu-usage.out 5" <+> setDefaultCursor xC_left_ptr <+> startDelayTimer where
+	startDelayTimer = do
+		liftIO $ threadDelay $ 1000000 --needed so that xmonad can be recompiled and launched on the fly without crashing
+		startTimer 1 >>= XS.put . TID
+
+
+--------------------------------------------------------------------------------------------
+-- HANDLE EVENT HOOK CONFIG                                                               --
+--------------------------------------------------------------------------------------------
+
+-- Wrapper for the Timer id, so it can be stored as custom mutable state
+data TidState = TID TimerId deriving Typeable
+
+instance ExtensionClass TidState where
+	initialValue = TID 0
+
+-- Handle event hook
+myHandleEventHook = fullscreenEventHook <+> docksEventHook <+> clockEventHook <+> handleTimerEvent <+> notFocusFloat where
+	clockEventHook e = do                 --thanks to DarthFennec
+		(TID t) <- XS.get                 --get the recent Timer id
+		handleTimer t e $ do              --run the following if e matches the id
+		    startTimer 1 >>= XS.put . TID --restart the timer, store the new id
+		    ask >>= logHook . config      --get the loghook and run it
+		    return Nothing                --return required type
+		return $ All True                 --return required type
+	notFocusFloat = followOnlyIf (fmap not isFloat) where --Do not focusFollowMouse on Float layout
+		isFloat = fmap (isSuffixOf myFloaName) $ gets (description . W.layout . W.workspace . W.current . windowset)
+
+
+--------------------------------------------------------------------------------------------
 -- LAYOUT CONFIG                                                                          --
 --------------------------------------------------------------------------------------------
 
@@ -392,29 +424,6 @@ myLayoutHook = avoidStruts
 
 
 --------------------------------------------------------------------------------------------
--- HANDLE EVENT HOOK CONFIG                                                               --
---------------------------------------------------------------------------------------------
-
--- wrapper for the Timer id, so it can be stored as custom mutable state
-data TidState = TID TimerId deriving Typeable
-
-instance ExtensionClass TidState where
-	initialValue = TID 0
-
--- Handle event hook
-myHandleEventHook = fullscreenEventHook <+> docksEventHook <+> clockEventHook <+> handleTimerEvent <+> notFocusFloat where
-	clockEventHook e = do                 --thanks to DarthFennec
-		(TID t) <- XS.get                 --get the recent Timer id
-		handleTimer t e $ do              --run the following if e matches the id
-		    startTimer 1 >>= XS.put . TID --restart the timer, store the new id
-		    ask >>= logHook . config      --get the loghook and run it
-		    return Nothing                --return required type
-		return $ All True                 --return required type
-	notFocusFloat = followOnlyIf (fmap not isFloat) where --Do not focusFollowMouse on Float layout
-		isFloat = fmap (isSuffixOf myFloaName) $ gets (description . W.layout . W.workspace . W.current . windowset)
-
-
---------------------------------------------------------------------------------------------
 -- MANAGE HOOK CONFIG                                                                     --
 --------------------------------------------------------------------------------------------
 
@@ -429,8 +438,8 @@ myManageHook = composeAll . concat $
 	[ [ resource  =? r --> doIgnore                    | r <- myIgnores ]
 	, [ className =? c --> doShift (myWorkspaces !! 1) | c <- myWebS    ]
 	, [ className =? c --> doShift (myWorkspaces !! 2) | c <- myCodeS   ]
-	, [ className =? c --> doShift (myWorkspaces !! 4) | c <- myChatS   ]
 	, [ className =? c --> doShift (myWorkspaces !! 3) | c <- myGfxS    ]
+	, [ className =? c --> doShift (myWorkspaces !! 4) | c <- myChatS   ]
 	, [ className =? c --> doShift (myWorkspaces !! 7) | c <- myAlt3S   ]
 	, [ className =? c --> doCenterFloat               | c <- myFloatCC ]
 	, [ name      =? n --> doCenterFloat               | n <- myFloatCN ]
@@ -438,19 +447,19 @@ myManageHook = composeAll . concat $
 	, [ className =? c --> doF W.focusDown             | c <- myFocusDC ]
 	, [ isFullscreen   --> doFullFloat ]
 	] where
-		name            = stringProperty "WM_NAME"
-		myIgnores       = ["desktop","desktop_window"]
-		myWebS          = ["Chromium","Firefox", "Opera"]
-		myCodeS         = ["NetBeans IDE 7.3"]
-		myGfxS          = ["Gimp", "gimp", "GIMP"]
-		myChatS         = ["Pidgin", "Xchat"]
-		myAlt3S         = ["Amule", "Transmission-gtk"]
-		myFloatCC       = ["MPlayer", "mplayer2", "File-roller", "zsnes", "Gcalctool", "Exo-helper-1", "Gksu", "PSX", "Galculator", "Nvidia-settings", "XFontSel"
-						  , "XCalc", "XClock", "Ossxmix", "Xvidcap", "Main", "Wicd-client.py"]
-		myFloatCN       = ["Choose a file", "Open Image", "File Operation Progress", "Firefox Preferences", "Preferences", "Search Engines", "Set up sync"
-						  ,"Passwords and Exceptions", "Autofill Options", "Rename File", "Copying files", "Moving files", "File Properties", "Replace", ""]
-		myFloatSN       = ["Event Tester"]
-		myFocusDC       = ["Event Tester", "Notify-osd"]
+		name      = stringProperty "WM_NAME"
+		myIgnores = ["desktop","desktop_window"]
+		myWebS    = ["Chromium","Firefox", "Opera"]
+		myCodeS   = ["NetBeans IDE 7.3"]
+		myChatS   = ["Pidgin", "Xchat"]
+		myGfxS    = ["Gimp", "gimp", "GIMP"]
+		myAlt3S   = ["Amule", "Transmission-gtk"]
+		myFloatCC = ["MPlayer", "mplayer2", "File-roller", "zsnes", "Gcalctool", "Exo-helper-1", "Gksu", "PSX", "Galculator", "Nvidia-settings", "XFontSel"
+				    , "XCalc", "XClock", "Ossxmix", "Xvidcap", "Main", "Wicd-client.py"]
+		myFloatCN = ["Choose a file", "Open Image", "File Operation Progress", "Firefox Preferences", "Preferences", "Search Engines", "Set up sync"
+				    ,"Passwords and Exceptions", "Autofill Options", "Rename File", "Copying files", "Moving files", "File Properties", "Replace", ""]
+		myFloatSN = ["Event Tester"]
+		myFocusDC = ["Event Tester", "Notify-osd"]
 
 
 --------------------------------------------------------------------------------------------
@@ -587,7 +596,7 @@ myDateL      = (dzenBoxStyleL white2BBoxPP $ date "%A") ++! (dzenBoxStyleL white
 myUptimeL    = (dzenBoxStyleL blue2BoxPP $ labelL "UPTIME") ++! (dzenBoxStyleL whiteBoxPP uptime)
 myFocusL     = (dzenClickStyleL focusCA $ dzenBoxStyleL white2BBoxPP $ labelL "FOCUS") ++! (dzenBoxStyleL whiteBoxPP $ shortenL 100 logTitle)
 myLayoutL    = (dzenClickStyleL layoutCA $ dzenBoxStyleL blue2BoxPP $ labelL "LAYOUT") ++! (dzenBoxStyleL whiteBoxPP $ onLogger (layoutText . removeWord . removeWord) logLayout) where
-	removeWord = tail . dropWhile (/= ' ')
+	removeWord xs = tail $ dropWhile (/= ' ') xs
 	layoutText xs
 		| isPrefixOf "Mirror" xs   = layoutText $ removeWord xs ++ " ^fg(" ++ colorBlue ++ ")M^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
 		| isPrefixOf "ReflectY" xs = layoutText $ removeWord xs ++ " ^fg(" ++ colorBlue ++ ")Y^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
@@ -619,41 +628,45 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 	, ((modMask, xK_masculine), scratchPad)                              --Scratchpad
 	, ((modMask .|. shiftMask, xK_Return), spawn $ XMonad.terminal conf) --Launch default terminal
 	--Window management bindings
-	, ((modMask, xK_c), kill)                                              --Close focused window
+	, ((modMask, xK_c), kill)                                                 --Close focused window
 	, ((mod1Mask, xK_F4), kill)
-	, ((modMask, xK_n), refresh)                                           --Resize viewed windows to the correct size
-	, ((modMask, xK_Tab), windows W.focusDown)                             --Move focus to the next window
+	, ((modMask, xK_n), refresh)                                              --Resize viewed windows to the correct size
+	, ((modMask, xK_Tab), windows W.focusDown)                                --Move focus to the next window
 	, ((modMask, xK_j), windows W.focusDown)
 	, ((mod1Mask, xK_Tab), windows W.focusDown)
-	, ((modMask, xK_k), windows W.focusUp)                                 --Move focus to the previous window
-	, ((modMask, xK_a), windows W.focusMaster)                             --Move focus to the master window
-	, ((modMask .|. shiftMask, xK_a), windows W.swapMaster)                --Swap the focused window and the master window
-	, ((modMask .|. shiftMask, xK_j), windows W.swapDown)                  --Swap the focused window with the next window
-	, ((modMask .|. shiftMask, xK_k), windows W.swapUp)                    --Swap the focused window with the previous window
-	, ((modMask, xK_h), sendMessage Shrink)                                --Shrink the master area
+	, ((modMask, xK_k), windows W.focusUp)                                    --Move focus to the previous window
+	, ((modMask, xK_a), windows W.focusMaster)                                --Move focus to the master window
+	, ((modMask .|. shiftMask, xK_a), windows W.swapMaster)                   --Swap the focused window and the master window
+	, ((modMask .|. shiftMask, xK_j), windows W.swapDown)                     --Swap the focused window with the next window
+	, ((modMask .|. shiftMask, xK_k), windows W.swapUp)                       --Swap the focused window with the previous window
+	, ((modMask, xK_h), sendMessage Shrink)                                   --Shrink the master area
 	, ((modMask .|. shiftMask, xK_Left), sendMessage Shrink)
-	, ((modMask, xK_l), sendMessage Expand)                                --Expand the master area
+	, ((modMask, xK_l), sendMessage Expand)                                   --Expand the master area
 	, ((modMask .|. shiftMask, xK_Right), sendMessage Expand)
-	, ((modMask .|. shiftMask, xK_h), sendMessage MirrorShrink)            --MirrorShrink the master area
+	, ((modMask .|. shiftMask, xK_h), sendMessage MirrorShrink)               --MirrorShrink the master area
 	, ((modMask .|. shiftMask, xK_Down), sendMessage MirrorShrink)
-	, ((modMask .|. shiftMask, xK_l), sendMessage MirrorExpand)            --MirrorExpand the master area
+	, ((modMask .|. shiftMask, xK_l), sendMessage MirrorExpand)               --MirrorExpand the master area
 	, ((modMask .|. shiftMask, xK_Up), sendMessage MirrorExpand)
-	, ((modMask, xK_t), withFocused $ windows . W.sink)                    --Push window back into tiling
-	, ((modMask .|. shiftMask, xK_t), rectFloatFocused)                    --Push window into float
-	, ((modMask, xK_m), withFocused minimizeWindow)                        --Minimize window
-	, ((modMask, xK_b), withFocused (sendMessage . maximizeRestore))       --Maximize window
-	, ((modMask .|. shiftMask, xK_m), sendMessage RestoreNextMinimizedWin) --Restore window
-	, ((modMask .|. shiftMask, xK_f), fullFloatFocused)                    --Push window into full screen
-	, ((modMask, xK_comma), sendMessage (IncMasterN 1))                    --Increment the number of windows in the master area
-	, ((modMask, xK_period), sendMessage (IncMasterN (-1)))                --Deincrement the number of windows in the master area
-	, ((modMask, xK_Right), sendMessage $ Go R)                            --Change focus to right
-	, ((modMask, xK_Left ), sendMessage $ Go L)                            --Change focus to left
-	, ((modMask, xK_Up   ), sendMessage $ Go U)                            --Change focus to up
-	, ((modMask, xK_Down ), sendMessage $ Go D)                            --Change focus to down
-	, ((modMask .|. controlMask, xK_Right), sendMessage $ Swap R)          --Swap focused window to right
-	, ((modMask .|. controlMask, xK_Left ), sendMessage $ Swap L)          --Swap focused window to left
-	, ((modMask .|. controlMask, xK_Up   ), sendMessage $ Swap U)          --Swap focused window to up
-	, ((modMask .|. controlMask, xK_Down ), sendMessage $ Swap D)          --Swap focused window to down
+	, ((modMask, xK_t), withFocused $ windows . W.sink)                       --Push window back into tiling
+	, ((modMask .|. shiftMask, xK_t), rectFloatFocused)                       --Push window into float
+	, ((modMask, xK_m), withFocused minimizeWindow)                           --Minimize window
+	, ((modMask, xK_b), withFocused (sendMessage . maximizeRestore))          --Maximize window
+	, ((modMask .|. shiftMask, xK_m), sendMessage RestoreNextMinimizedWin)    --Restore window
+	, ((modMask .|. shiftMask, xK_f), fullFloatFocused)                       --Push window into full screen
+	, ((modMask, xK_comma), sendMessage (IncMasterN 1))                       --Increment the number of windows in the master area
+	, ((modMask, xK_period), sendMessage (IncMasterN (-1)))                   --Deincrement the number of windows in the master area
+	, ((modMask, xK_Right), sendMessage $ Go R)                               --Change focus to right
+	, ((modMask, xK_Left ), sendMessage $ Go L)                               --Change focus to left
+	, ((modMask, xK_Up   ), sendMessage $ Go U)                               --Change focus to up
+	, ((modMask, xK_Down ), sendMessage $ Go D)                               --Change focus to down
+	, ((modMask .|. controlMask, xK_Right), sendMessage $ Swap R)             --Swap focused window to right
+	, ((modMask .|. controlMask, xK_Left ), sendMessage $ Swap L)             --Swap focused window to left
+	, ((modMask .|. controlMask, xK_Up   ), sendMessage $ Swap U)             --Swap focused window to up
+	, ((modMask .|. controlMask, xK_Down ), sendMessage $ Swap D)             --Swap focused window to down
+	, ((modMask .|. mod1Mask, xK_Left), withFocused (keysMoveWindow (-30,0))) -- move floated window 10 pixels left
+	, ((modMask .|. mod1Mask, xK_Right), withFocused (keysMoveWindow (30,0))) -- move floated window 10 pixels right
+	, ((modMask .|. mod1Mask, xK_Up), withFocused (keysMoveWindow (0,-30)))   -- move floated window 10 pixels up
+	, ((modMask .|. mod1Mask, xK_Down), withFocused (keysMoveWindow (0,30)))  -- move floated window 10 pixels down
 	--Layout management bindings
 	, ((modMask, xK_space), sendMessage NextLayout)                                                                                    --Rotate through the available layout algorithms
 	, ((modMask, xK_v ), sendMessage ToggleLayout)                                                                                     --Toggle window titles (can click drag to move windows)
@@ -709,6 +722,7 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 		rectFloatFocused = withFocused $ \f -> windows =<< appEndo `fmap` runQuery (doRectFloat $ RationalRect 0.05 0.05 0.9 0.9) f
 		killAndRestart = do
 			spawn "/usr/bin/killall dzen2 haskell-cpu-usage.out"
+			liftIO $ threadDelay 1000000
 			restart "xmonad" True
 
 -- Mouse bindings
@@ -719,6 +733,6 @@ myMouseBindings (XConfig {XMonad.modMask = modMask}) = M.fromList $
 	, ((modMask, button3), (\w -> focus w >> Flex.mouseResizeWindow w))                   --Set the window to floating mode and resize by dragging
 	, ((modMask, button4), (\_ -> prevWS))                                                --Switch to previous workspace
 	, ((modMask, button5), (\_ -> nextWS))                                                --Switch to next workspace
-	, (((modMask .|. shiftMask), button4), (\_ -> shiftToPrev))                           --Send client  to previous workspace
-	, (((modMask .|. shiftMask), button5), (\_ -> shiftToNext))                           --Send client  to next workspace
+	, (((modMask .|. shiftMask), button4), (\_ -> shiftToPrev))                           --Send client to previous workspace
+	, (((modMask .|. shiftMask), button5), (\_ -> shiftToNext))                           --Send client to next workspace
 	]
