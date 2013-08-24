@@ -384,60 +384,43 @@ myHandleEventHook = fullscreenEventHook <+> docksEventHook <+> clockEventHook <+
 -- Tabbed transformer (W+f)
 data TABBED = TABBED deriving (Read, Show, Eq, Typeable)
 instance Transformer TABBED Window where
-	transform TABBED x k = k myFTab (\_ -> x)
+	transform TABBED x k = k myFTabU (\_ -> x)
 
 -- Floated transformer (W+ctl+f)
 data FLOATED = FLOATED deriving (Read, Show, Eq, Typeable)
 instance Transformer FLOATED Window where
-	transform FLOATED x k = k myFloa (\_ -> x)
+	transform FLOATED x k = k myFloaU (\_ -> x)
+
+-- Normal Layouts
+myTileN = ResizableTall 1 0.03 0.5 []
+myMirrN = Mirror myTileN
+myMosAN = MosaicAlt M.empty
+myOneBN = OneBig 0.75 0.65
+myMTabN = mastered 0.01 0.4 $ tabbed shrinkText myTitleTheme
+myChatN = withIM (0.20) (Title "Buddy List") myMosAN
+myTabbN = tabbed shrinkText myTitleTheme
 
 -- Switcher Layouts
-myTile = smartBorders
-	$ toggleLayouts (named ("Switcher " ++ myTileName) myTileS)
-	$ named ("Normal " ++ myTileName)
-	$ ResizableTall 1 0.03 0.5 [] where
-		myTileS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ ResizableTall 1 0.03 0.5 [])
-myMirr = smartBorders
-	$ toggleLayouts (named ("Switcher " ++ myMirrName) myMirrS)
-	$ named ("Normal " ++ myMirrName)
-	$ Mirror
-	$ ResizableTall 1 0.03 0.5 [] where
-		myMirrS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ Mirror $ ResizableTall 1 0.03 0.5 [])
-myMosA = smartBorders
-	$ toggleLayouts (named ("Switcher " ++ myMosAName) myMosAS)
-	$ named ("Normal " ++ myMosAName)
-	$ MosaicAlt M.empty where
-		myMosAS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ MosaicAlt M.empty)
-myOneB = smartBorders
-	$ toggleLayouts (named ("Switcher " ++ myOneBName) myOneBS)
-	$ named ("Normal " ++ myOneBName)
-	$ OneBig 0.75 0.65 where
-		myOneBS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ OneBig 0.75 0.65)
-myMTab = smartBorders
-	$ toggleLayouts (named ("Switcher " ++ myMTabName) myMTabS)
-	$ named ("Normal " ++ myMTabName)
-	$ mastered 0.01 0.4 $ tabbed shrinkText myTitleTheme where
-		myMTabS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ mastered 0.01 0.4 $ tabbed shrinkText myTitleTheme)
-myChat = smartBorders
-	$ toggleLayouts (named ("Switcher " ++ myChatName)
-	$ withIM (0.20) (Title "Buddy List") myChatS) (named ("Normal " ++ myChatName)
-	$ withIM (0.20) (Title "Buddy List")
-	$ MosaicAlt M.empty) where
-		myChatS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ MosaicAlt M.empty)
+myTileS = windowSwitcherDecoration shrinkText myTitleTheme $ draggingVisualizer myTileN
+myMirrS = windowSwitcherDecoration shrinkText myTitleTheme $ draggingVisualizer myTileN
+myMosAS = windowSwitcherDecoration shrinkText myTitleTheme $ draggingVisualizer myMosAN
+myOneBS = windowSwitcherDecoration shrinkText myTitleTheme $ draggingVisualizer myOneBN
+myMTabS = windowSwitcherDecoration shrinkText myTitleTheme $ draggingVisualizer myMTabN
+myChatS = withIM (0.20) (Title "Buddy List") myMosAS
+
+-- Toggled Layouts
+myTileT = smartBorders $ toggleLayouts (named ("Switcher " ++ myTileName) myTileS) (named ("Normal " ++ myTileName) myTileN)
+myMirrT = smartBorders $ toggleLayouts (named ("Switcher " ++ myMirrName) myMirrS) (named ("Normal " ++ myMirrName) myMirrN)
+myMosAT = smartBorders $ toggleLayouts (named ("Switcher " ++ myMosAName) myMosAS) (named ("Normal " ++ myMosAName) myMosAN)
+myOneBT = smartBorders $ toggleLayouts (named ("Switcher " ++ myOneBName) myOneBS) (named ("Normal " ++ myOneBName) myOneBN)
+myMTabT = smartBorders $ toggleLayouts (named ("Switcher " ++ myMTabName) myMTabS) (named ("Normal " ++ myMTabName) myMTabN)
+myChatT = smartBorders $ toggleLayouts (named ("Switcher " ++ myChatName) myChatS) (named ("Normal " ++ myChatName) myChatN)
 
 -- Unique Layouts
-myTabb = smartBorders
-	$ named ("Unique " ++ myTabbName)
-	$ tabbed shrinkText myTitleTheme
-myTTab = smartBorders
-	$ named ("Unique " ++ myTTabName)
-	$ combineTwoP (OneBig 0.75 0.75) (tabbed shrinkText myTitleTheme) (tabbed shrinkText myTitleTheme) (ClassName "Chromium")
-myFTab = smartBorders
-	$ named ("Unique " ++ myFTabName)
-	$ tabbedAlways shrinkText myTitleTheme
-myFloa = named ("Unique " ++ myFloaName)
-	$ mouseResize
-	$ noFrillsDeco shrinkText myTitleTheme simplestFloat
+myTabbU = smartBorders $ named ("Unique " ++ myTabbName) myTabbN
+myTTabU = smartBorders $ named ("Unique " ++ myTTabName) $ combineTwoP myOneBN myTabbN myTabbN $ ClassName "Chromium"
+myFTabU = smartBorders $ named ("Unique " ++ myFTabName) $ tabbedAlways shrinkText myTitleTheme
+myFloaU = named ("Unique " ++ myFloaName) $ mouseResize $ noFrillsDeco shrinkText myTitleTheme simplestFloat
 
 -- Layout hook
 myLayoutHook = avoidStruts
@@ -453,10 +436,10 @@ myLayoutHook = avoidStruts
 	$ onWorkspace (myWorkspaces !! 2) codeLayouts
 	$ onWorkspace (myWorkspaces !! 4) chatLayouts
 	$ allLayouts where
-		webLayouts  = myTabb ||| myTTab
-		codeLayouts = myMTab ||| myOneB ||| myTile
-		chatLayouts = myChat
-		allLayouts  = myTile ||| myOneB ||| myMirr ||| myMosA ||| myMTab
+		webLayouts  = myTabbU ||| myTTabU
+		codeLayouts = myMTabT ||| myOneBT ||| myTileT
+		chatLayouts = myChatT
+		allLayouts  = myTileT ||| myOneBT ||| myMirrT ||| myMosAT ||| myMTabT
 
 
 --------------------------------------------------------------------------------------------
@@ -465,11 +448,7 @@ myLayoutHook = avoidStruts
 
 -- Manage Hook
 myManageHook :: ManageHook
-myManageHook = do
-	dynamicMasterHook
-	manageScratchPad
-	manageDocks
-	manageWindows
+myManageHook = manageWindows <+> manageScratchPad <+> manageDocks <+> dynamicMasterHook
 
 -- Scratchpad (W+º)
 manageScratchPad :: ManageHook
