@@ -351,7 +351,7 @@ myStartupHook = do
 	spawn "/usr/bin/killall haskell-cpu-usage.out"
 	liftIO $ threadDelay 1000000 --needed so that xmonad can be recompiled and launched on the fly without crashing
 	spawn "/home/nnoell/.xmonad/apps/haskell-cpu-usage.out 5"
-	(startTimer 1 >>= XS.put . TID)
+	startTimer 1 >>= XS.put . TID
 
 
 --------------------------------------------------------------------------------------------
@@ -392,24 +392,52 @@ instance Transformer FLOATED Window where
 	transform FLOATED x k = k myFloa (\_ -> x)
 
 -- Switcher Layouts
-myTile = smartBorders $ toggleLayouts (named ("Switcher " ++ myTileName) myTileS) $ named ("Normal " ++ myTileName) $ ResizableTall 1 0.03 0.5 [] where
-	myTileS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ ResizableTall 1 0.03 0.5 [])
-myMirr = smartBorders $ toggleLayouts (named ("Switcher " ++ myMirrName) myMirrS) $ named ("Normal " ++ myMirrName) $ Mirror $ ResizableTall 1 0.03 0.5 [] where
-	myMirrS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ Mirror $ ResizableTall 1 0.03 0.5 [])
-myMosA = smartBorders $ toggleLayouts (named ("Switcher " ++ myMosAName) myMosAS) $ named ("Normal " ++ myMosAName) $ MosaicAlt M.empty where
-	myMosAS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ MosaicAlt M.empty)
-myOneB = smartBorders $ toggleLayouts (named ("Switcher " ++ myOneBName) myOneBS) $ named ("Normal " ++ myOneBName) $ OneBig 0.75 0.65 where
-	myOneBS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ OneBig 0.75 0.65)
-myMTab = smartBorders $ toggleLayouts (named ("Switcher " ++ myMTabName) myMTabS) $ named ("Normal " ++ myMTabName) $ mastered 0.01 0.4 $ tabbed shrinkText myTitleTheme where
-	myMTabS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ mastered 0.01 0.4 $ tabbed shrinkText myTitleTheme)
-myChat = smartBorders $ toggleLayouts (named ("Switcher " ++ myChatName) $ withIM (0.20) (Title "Buddy List") myChatS) (named ("Normal " ++ myChatName) $ withIM (0.20) (Title "Buddy List") $ MosaicAlt M.empty) where
-	myChatS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ MosaicAlt M.empty)
+myTile = smartBorders
+	$ toggleLayouts (named ("Switcher " ++ myTileName) myTileS)
+	$ named ("Normal " ++ myTileName)
+	$ ResizableTall 1 0.03 0.5 [] where
+		myTileS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ ResizableTall 1 0.03 0.5 [])
+myMirr = smartBorders
+	$ toggleLayouts (named ("Switcher " ++ myMirrName) myMirrS)
+	$ named ("Normal " ++ myMirrName)
+	$ Mirror
+	$ ResizableTall 1 0.03 0.5 [] where
+		myMirrS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ Mirror $ ResizableTall 1 0.03 0.5 [])
+myMosA = smartBorders
+	$ toggleLayouts (named ("Switcher " ++ myMosAName) myMosAS)
+	$ named ("Normal " ++ myMosAName)
+	$ MosaicAlt M.empty where
+		myMosAS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ MosaicAlt M.empty)
+myOneB = smartBorders
+	$ toggleLayouts (named ("Switcher " ++ myOneBName) myOneBS)
+	$ named ("Normal " ++ myOneBName)
+	$ OneBig 0.75 0.65 where
+		myOneBS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ OneBig 0.75 0.65)
+myMTab = smartBorders
+	$ toggleLayouts (named ("Switcher " ++ myMTabName) myMTabS)
+	$ named ("Normal " ++ myMTabName)
+	$ mastered 0.01 0.4 $ tabbed shrinkText myTitleTheme where
+		myMTabS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ mastered 0.01 0.4 $ tabbed shrinkText myTitleTheme)
+myChat = smartBorders
+	$ toggleLayouts (named ("Switcher " ++ myChatName)
+	$ withIM (0.20) (Title "Buddy List") myChatS) (named ("Normal " ++ myChatName)
+	$ withIM (0.20) (Title "Buddy List")
+	$ MosaicAlt M.empty) where
+		myChatS = windowSwitcherDecoration shrinkText myTitleTheme (draggingVisualizer $ MosaicAlt M.empty)
 
 -- Unique Layouts
-myTabb = smartBorders $ named ("Unique " ++ myTabbName) $ tabbed shrinkText myTitleTheme
-myTTab = smartBorders $ named ("Unique " ++ myTTabName) $ combineTwoP (OneBig 0.75 0.75) (tabbed shrinkText myTitleTheme) (tabbed shrinkText myTitleTheme) (ClassName "Chromium")
-myFTab = smartBorders $ named ("Unique " ++ myFTabName) $ tabbedAlways shrinkText myTitleTheme
-myFloa = named ("Unique " ++ myFloaName) $ mouseResize $ noFrillsDeco shrinkText myTitleTheme simplestFloat
+myTabb = smartBorders
+	$ named ("Unique " ++ myTabbName)
+	$ tabbed shrinkText myTitleTheme
+myTTab = smartBorders
+	$ named ("Unique " ++ myTTabName)
+	$ combineTwoP (OneBig 0.75 0.75) (tabbed shrinkText myTitleTheme) (tabbed shrinkText myTitleTheme) (ClassName "Chromium")
+myFTab = smartBorders
+	$ named ("Unique " ++ myFTabName)
+	$ tabbedAlways shrinkText myTitleTheme
+myFloa = named ("Unique " ++ myFloaName)
+	$ mouseResize
+	$ noFrillsDeco shrinkText myTitleTheme simplestFloat
 
 -- Layout hook
 myLayoutHook = avoidStruts
