@@ -87,21 +87,27 @@ main = do
 	botLeftBar  <- spawnPipe $ dzenFlagsToStr dzenBotLeftFlags
 	botRightBar <- spawnPipe $ dzenFlagsToStr dzenBotRightFlags
 	xmonad $ myUrgencyHook $ defaultConfig
-		{ terminal           = "urxvtc"
-		, modMask            = mod4Mask
-		, focusFollowsMouse  = True
-		, clickJustFocuses   = True
-		, borderWidth        = 1
-		, normalBorderColor  = colorBlackAlt
-		, focusedBorderColor = colorWhiteAlt2
-		, layoutHook         = myLayoutHook
-		, workspaces         = myWorkspaces
-		, manageHook         = myManageHook <+> manageScratchPad <+> manageDocks <+> dynamicMasterHook
-		, logHook            = myBotLeftLogHook botLeftBar <+> myBotRightLogHook botRightBar <+> myTopLeftLogHook topLeftBar <+> myTopRightLogHook topRightBar <+> ewmhDesktopsLogHook >> setWMName "LG3D"
-		, handleEventHook    = myHandleEventHook
-		, keys               = myKeys
-		, mouseBindings      = myMouseBindings
-		, startupHook        = myStartupHook
+		{ terminal           = "urxvtc"          --default terminal
+		, modMask            = mod4Mask          --default modMask
+		, focusFollowsMouse  = True              --focus follow config
+		, clickJustFocuses   = True              --focus click config
+		, borderWidth        = 1                 --border width
+		, normalBorderColor  = colorBlackAlt     --border color
+		, focusedBorderColor = colorWhiteAlt2    --focused border color
+		, workspaces         = myWorkspaces      --workspace names
+		, startupHook        = myStartupHook     --autostart config
+		, handleEventHook    = myHandleEventHook --event config
+		, layoutHook         = myLayoutHook      --layout config
+		, manageHook         = myManageHook      --xprop config
+		, logHook            = do                --status bar config
+			myTopLeftLogHook topLeftBar            --top left dzen
+			myTopRightLogHook topRightBar          --top right dzen
+			myBotLeftLogHook botLeftBar            --bottom left dzen
+			myBotRightLogHook botRightBar          --bottom right dzen
+			ewmhDesktopsLogHook
+			setWMName "LG3D"
+		, keys               = myKeys            --key bindings config
+		, mouseBindings      = myMouseBindings   --mouse bindings config
 		}
 
 
@@ -340,10 +346,12 @@ myFloaName = "Float"
 --------------------------------------------------------------------------------------------
 
 -- Startup Hook
-myStartupHook = spawn "/home/nnoell/.xmonad/apps/haskell-cpu-usage.out 5" <+> setDefaultCursor xC_left_ptr <+> startDelayTimer where
-	startDelayTimer = do
-		liftIO $ threadDelay $ 1000000 --needed so that xmonad can be recompiled and launched on the fly without crashing
-		startTimer 1 >>= XS.put . TID
+myStartupHook = do
+	setDefaultCursor xC_left_ptr
+	spawn "/usr/bin/killall haskell-cpu-usage.out"
+	liftIO $ threadDelay 1000000 --needed so that xmonad can be recompiled and launched on the fly without crashing
+	spawn "/home/nnoell/.xmonad/apps/haskell-cpu-usage.out 5"
+	(startTimer 1 >>= XS.put . TID)
 
 
 --------------------------------------------------------------------------------------------
@@ -427,14 +435,22 @@ myLayoutHook = avoidStruts
 -- MANAGE HOOK CONFIG                                                                     --
 --------------------------------------------------------------------------------------------
 
+-- Manage Hook
+myManageHook :: ManageHook
+myManageHook = do
+	dynamicMasterHook
+	manageScratchPad
+	manageDocks
+	manageWindows
+
 -- Scratchpad (W+º)
 manageScratchPad :: ManageHook
 manageScratchPad = scratchpadManageHook $ W.RationalRect (0) (panelHeight/yRes) (1) (3/4)
 scratchPad = scratchpadSpawnActionCustom "urxvtc -name scratchpad"
 
 -- Manage hook
-myManageHook :: ManageHook
-myManageHook = composeAll . concat $
+manageWindows :: ManageHook
+manageWindows = composeAll . concat $
 	[ [ resource  =? r --> doIgnore                    | r <- myIgnores ]
 	, [ className =? c --> doShift (myWorkspaces !! 1) | c <- myWebS    ]
 	, [ className =? c --> doShift (myWorkspaces !! 2) | c <- myCodeS   ]
@@ -470,7 +486,14 @@ myManageHook = composeAll . concat $
 myUrgencyHook :: LayoutClass l Window => XConfig l -> XConfig l
 myUrgencyHook = withUrgencyHook dzenUrgencyHook
 	{ duration = 2000000
-	, args     = ["-x", "0", "-y", "0", "-h", show panelHeight, "-w", show topPanelSepPos, "-fn", dzenFont, "-bg", colorBlack, "-fg", colorGreen]
+	, args     = ["-x", "0"
+				 , "-y", "0"
+				 , "-h", show panelHeight
+				 , "-w", show topPanelSepPos
+				 , "-fn", dzenFont
+				 , "-bg", colorBlack
+				 , "-fg", colorGreen
+				]
 	}
 
 -- Dzen top left bar flags
@@ -619,7 +642,7 @@ myWorkspaceL = (dzenClickStyleL workspaceCA $ dzenBoxStyleL blue2BoxPP $ labelL 
 myKeys :: XConfig Layout -> M.Map (KeyMask, KeySym) (X ())
 myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 	--Xmonad bindings
-	[((modMask .|. shiftMask, xK_q), io (exitWith ExitSuccess))          --Quit xmonad
+	[((modMask .|. shiftMask, xK_q), killAndExit)                        --Quit xmonad
 	, ((modMask, xK_q), killAndRestart)                                  --Restart xmonad
 	, ((mod1Mask, xK_F2), shellPrompt myXPConfig)                        --Launch Xmonad shell prompt
 	, ((modMask, xK_F2), xmonadPrompt myXPConfig)                        --Launch Xmonad prompt
@@ -720,6 +743,9 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 	] where
 		fullFloatFocused = withFocused $ \f -> windows =<< appEndo `fmap` runQuery doFullFloat f
 		rectFloatFocused = withFocused $ \f -> windows =<< appEndo `fmap` runQuery (doRectFloat $ RationalRect 0.05 0.05 0.9 0.9) f
+		killAndExit = do
+			spawn "/usr/bin/killall dzen2 haskell-cpu-usage.out"
+			io (exitWith ExitSuccess)
 		killAndRestart = do
 			spawn "/usr/bin/killall dzen2 haskell-cpu-usage.out"
 			liftIO $ threadDelay 1000000
