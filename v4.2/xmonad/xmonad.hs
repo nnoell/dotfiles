@@ -471,9 +471,9 @@ manageWindows = composeAll . concat $
 		myGfxS    = ["Gimp", "gimp", "GIMP"]
 		myAlt3S   = ["Amule", "Transmission-gtk"]
 		myFloatCC = ["MPlayer", "mplayer2", "File-roller", "zsnes", "Gcalctool", "Exo-helper-1", "Gksu", "PSX", "Galculator", "Nvidia-settings", "XFontSel"
-				    , "XCalc", "XClock", "Ossxmix", "Xvidcap", "Main", "Wicd-client.py"]
+			        , "XCalc", "XClock", "Ossxmix", "Xvidcap", "Main", "Wicd-client.py"]
 		myFloatCN = ["Choose a file", "Open Image", "File Operation Progress", "Firefox Preferences", "Preferences", "Search Engines", "Set up sync"
-				    ,"Passwords and Exceptions", "Autofill Options", "Rename File", "Copying files", "Moving files", "File Properties", "Replace", ""]
+			        ,"Passwords and Exceptions", "Autofill Options", "Rename File", "Copying files", "Moving files", "File Properties", "Replace", ""]
 		myFloatSN = ["Event Tester"]
 		myFocusDC = ["Event Tester", "Notify-osd"]
 
@@ -487,13 +487,13 @@ myUrgencyHook :: LayoutClass l Window => XConfig l -> XConfig l
 myUrgencyHook = withUrgencyHook dzenUrgencyHook
 	{ duration = 2000000
 	, args     = ["-x", "0"
-				 , "-y", "0"
-				 , "-h", show panelHeight
-				 , "-w", show topPanelSepPos
-				 , "-fn", dzenFont
-				 , "-bg", colorBlack
-				 , "-fg", colorGreen
-				]
+		         , "-y", "0"
+		         , "-h", show panelHeight
+		         , "-w", show topPanelSepPos
+		         , "-fn", dzenFont
+		         , "-bg", colorBlack
+		         , "-fg", colorGreen
+		         ]
 	}
 
 -- Dzen top left bar flags
@@ -597,10 +597,10 @@ dzenBotRightFlags = DF
 -- Bottom right bar logHook
 myBotRightLogHook :: Handle -> X ()
 myBotRightLogHook h = dynamicLogWithPP $ defaultPP
-	{ ppOutput          = hPutStrLn h
-	, ppOrder           = \(_:_:_:x) -> x
-	, ppSep             = " "
-	, ppExtras          = [ myCpuL, myMemL, myTempL, myBrightL, myWifiL, myBatL ]
+	{ ppOutput = hPutStrLn h
+	, ppOrder  = \(_:_:_:x) -> x
+	, ppSep    = " "
+	, ppExtras = [ myCpuL, myMemL, myTempL, myBrightL, myWifiL, myBatL ]
 	}
 
 
