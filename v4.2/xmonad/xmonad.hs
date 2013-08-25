@@ -326,7 +326,17 @@ myWorkspaces = map show $ [1..9] ++ [0]
 
 -- Workspace names
 workspaceNames :: [WorkspaceId]
-workspaceNames = ["Terminal", "Network", "Development", "Graphics", "Chatting", "Video", "Alternate", "Alternate", "Alternate", "Alternate"]
+workspaceNames = ["Terminal"
+				 , "Network"
+				 , "Development"
+				 , "Graphics"
+				 , "Chatting"
+				 , "Video"
+				 , "Alternate"
+				 , "Alternate"
+				 , "Alternate"
+				 , "Alternate"
+				 ]
 
 -- Layout names (must be one word name and not equal to: Mirror, ReflectX, ReflectY, Switcher, Normal and Unique)
 myTileName = "Tiled"
@@ -396,9 +406,9 @@ myTileN = ResizableTall 1 0.03 0.5 []
 myMirrN = Mirror myTileN
 myMosAN = MosaicAlt M.empty
 myOneBN = OneBig 0.75 0.65
-myMTabN = mastered 0.01 0.4 $ tabbed shrinkText myTitleTheme
-myChatN = withIM (0.20) (Title "Buddy List") myMosAN
 myTabbN = tabbed shrinkText myTitleTheme
+myMTabN = mastered 0.01 0.4 $ myTabbN
+myChatN = withIM (0.20) (Title "Buddy List") myMosAN
 
 -- Switcher Layouts
 myTileS = windowSwitcherDecoration shrinkText myTitleTheme $ draggingVisualizer myTileN
