@@ -124,6 +124,14 @@ readWithE p e c = E.catch (do
 	let check x = if (null x) then (e ++ "\n") else x --if file is empty return "\n"
 	return $ (init $ check contents) ++ c ) ((\_ -> return e) :: E.SomeException -> IO String)
 
+-- Returns the file content in a String. If it Doesnt exist, it will returns what you want
+readWithE2 :: FilePath -> String -> String -> IO String
+readWithE2 e c p = E.catch (do
+	contents <- readFile p
+	let check x = if (null x) then (e ++ "\n") else x --if file is empty return "\n"
+	return $ (init $ check contents) ++ c ) ((\_ -> return e) :: E.SomeException -> IO String)
+
+
 -- Battery Percent Logger
 batPercent :: Logger
 batPercent = do
@@ -150,14 +158,22 @@ wifiSignal = do
 	    signal = if (length signalLines) >= 3 then (init ((words (signalLines !! 2)) !! 2) ++ "%") else "Off"
 	return $ return signal
 
+{-
+cpuTemp2 :: Int -> Logger
+cpuTemp2 n = do
+	let pathtemps = map (++"/thermal_zone/temp") $ map ("/sys/bus/acpi/devices/LNXTHERM:0"++) $ take n $ map show [1..]
+	let temps = pathtemps >>= (liftIO . readWithE2 "N/A" "°")
+	let divc x = show $ div (read x::Int) 1000
+	return $ return $ init $ concat $ map (++" ") (map divc temps)
+-}
+
 -- CPU Temp Logger
 cpuTemp :: Logger
 cpuTemp = do
-	temp1 <- liftIO $ readWithE "/sys/bus/platform/devices/coretemp.0/temp1_input" "0" ""
-	temp2 <- liftIO $ readWithE "/sys/bus/platform/devices/coretemp.0/temp2_input" "0" ""
-	temp3 <- liftIO $ readWithE "/sys/bus/platform/devices/coretemp.0/temp3_input" "0" ""
+	temp1 <- liftIO $ readWithE "/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp" "0" ""
+	temp2 <- liftIO $ readWithE "/sys/bus/acpi/devices/LNXTHERM:01/thermal_zone/temp" "0" ""
 	let divc x = show $ div (read x::Int) 1000
-	return $ return $ (divc temp1) ++ "° " ++ (divc temp2) ++ "° " ++ (divc temp3) ++ "°"
+	return $ return $ (divc temp1) ++ "° " ++ (divc temp2) ++ "°"
 
 -- Filesystem percent Logger
 fsPerc :: String -> Logger
