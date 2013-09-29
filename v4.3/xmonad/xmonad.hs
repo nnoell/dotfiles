@@ -87,7 +87,7 @@ main = do
 	botLeftBar  <- spawnPipe $ "/usr/bin/dzen2" ++ dzenFlagsToStr dzenBotLeftFlags
 	botRightBar <- spawnPipe $ "/usr/bin/dzen2" ++ dzenFlagsToStr dzenBotRightFlags
 	xmonad $ myUrgencyHook $ defaultConfig
-		{ terminal           = "/usr/bin/urxvtc"          --default terminal
+		{ terminal           = "/usr/bin/urxvtc" --default terminal
 		, modMask            = mod4Mask          --default modMask
 		, focusFollowsMouse  = True              --focus follow config
 		, clickJustFocuses   = True              --focus click config
@@ -326,19 +326,20 @@ myWorkspaces = map show $ [1..9] ++ [0]
 
 -- Workspace names
 workspaceNames :: [WorkspaceId]
-workspaceNames = ["Terminal"
-                 , "Network"
-                 , "Development"
-                 , "Graphics"
-                 , "Chatting"
-                 , "Video"
-                 , "Alternate1"
-                 , "Alternate2"
-                 , "Alternate3"
-                 , "Alternate4"
-                 ]
+workspaceNames =
+	["Terminal"
+	, "Network"
+	, "Development"
+	, "Graphics"
+	, "Chatting"
+	, "Video"
+	, "Alternate1"
+	, "Alternate2"
+	, "Alternate3"
+	, "Alternate4"
+	]
 
--- Layout names (must be one word name and not equal to: Mirror, ReflectX, ReflectY, Switcher, Normal and Unique)
+-- Layout names (must be one word not equal to: Mirror, ReflectX, ReflectY, Switcher, Normal and Unique)
 myTileName = "Tiled"
 myMirrName = "Mirror"
 myMosAName = "Mosaic"
@@ -375,16 +376,19 @@ instance ExtensionClass TidState where
 	initialValue = TID 0
 
 -- Handle event hook
-myHandleEventHook = fullscreenEventHook <+> docksEventHook <+> clockEventHook <+> handleTimerEvent <+> notFocusFloat where
-	clockEventHook e = do                 --thanks to DarthFennec
-		(TID t) <- XS.get                 --get the recent Timer id
-		handleTimer t e $ do              --run the following if e matches the id
-			startTimer 1 >>= XS.put . TID --restart the timer, store the new id
-			ask >>= logHook . config      --get the loghook and run it
-			return Nothing                --return required type
-		return $ All True                 --return required type
-	notFocusFloat = followOnlyIf (fmap not isFloat) where --Do not focusFollowMouse on Float layout
-		isFloat = fmap (isSuffixOf myFloaName) $ gets (description . W.layout . W.workspace . W.current . windowset)
+myHandleEventHook =
+	fullscreenEventHook <+> docksEventHook <+>
+	clockEventHook <+> handleTimerEvent <+>
+	notFocusFloat where
+		clockEventHook e = do                 --thanks to DarthFennec
+			(TID t) <- XS.get                 --get the recent Timer id
+			handleTimer t e $ do              --run the following if e matches the id
+				startTimer 1 >>= XS.put . TID --restart the timer, store the new id
+				ask >>= logHook . config      --get the loghook and run it
+				return Nothing                --return required type
+			return $ All True                 --return required type
+		notFocusFloat = followOnlyIf (fmap not isFloat) where --Do not focusFollowMouse on Float layout
+			isFloat = fmap (isSuffixOf myFloaName) $ gets (description . W.layout . W.workspace . W.current . windowset)
 
 
 --------------------------------------------------------------------------------------------
@@ -508,14 +512,15 @@ manageWindows = composeAll . concat $
 myUrgencyHook :: LayoutClass l Window => XConfig l -> XConfig l
 myUrgencyHook = withUrgencyHook dzenUrgencyHook
 	{ duration = 2000000
-	, args     = ["-x", "0"
-	             , "-y", "0"
-	             , "-h", show panelHeight
-	             , "-w", show topPanelSepPos
-	             , "-fn", dzenFont
-	             , "-bg", colorBlack
-	             , "-fg", colorGreen
-	             ]
+	, args =
+		[ "-x", "0"
+		, "-y", "0"
+		, "-h", show panelHeight
+		, "-w", show topPanelSepPos
+		, "-fn", dzenFont
+		, "-bg", colorBlack
+		, "-fg", colorGreen
+		]
 	}
 
 -- Dzen top left bar flags
@@ -537,8 +542,8 @@ dzenTopLeftFlags = DF
 myTopLeftLogHook :: Handle -> X ()
 myTopLeftLogHook h = dynamicLogWithPP $ defaultPP
 	{ ppOutput = hPutStrLn h
-	, ppOrder = \(_:_:_:x) -> x
-	, ppSep = " "
+	, ppOrder  = \(_:_:_:x) -> x
+	, ppSep    = " "
 	, ppExtras = [ myLayoutL, myWorkspaceL, myFocusL ]
 	}
 
@@ -561,8 +566,8 @@ dzenTopRightFlags = DF
 myTopRightLogHook :: Handle -> X ()
 myTopRightLogHook h = dynamicLogWithPP $ defaultPP
 	{ ppOutput  = hPutStrLn h
-	, ppOrder = \(_:_:_:x) -> x
-	, ppSep = " "
+	, ppOrder   = \(_:_:_:x) -> x
+	, ppSep     = " "
 	, ppExtras  = [ myUptimeL, myDateL ]
 	}
 
@@ -585,7 +590,7 @@ dzenBotLeftFlags = DF
 myBotLeftLogHook :: Handle -> X ()
 myBotLeftLogHook h = dynamicLogWithPP . namedScratchpadFilterOutWorkspacePP $ defaultPP
 	{ ppOutput          = hPutStrLn h
-	, ppOrder           = \(ws:l:_:x) -> [ws] ++ x
+	, ppOrder           = \(ws:_:_:x) -> [ws] ++ x
 	, ppSep             = " "
 	, ppWsSep           = ""
 	, ppCurrent         = dzenBoxStyle blue2BBoxPP
@@ -677,10 +682,10 @@ myLayoutL =
 	(dzenBoxStyleL whiteBoxPP $ onLogger (layoutText . removeWord . removeWord) logLayout) where
 		removeWord xs = tail $ dropWhile (/= ' ') xs
 		layoutText xs
-			| isPrefixOf "Mirror" xs   = layoutText $ removeWord xs ++ " ^fg(" ++ colorBlue ++ ")M^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
-			| isPrefixOf "ReflectY" xs = layoutText $ removeWord xs ++ " ^fg(" ++ colorBlue ++ ")Y^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
-			| isPrefixOf "ReflectX" xs = layoutText $ removeWord xs ++ " ^fg(" ++ colorBlue ++ ")X^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
-			| isPrefixOf "Switcher" xs = layoutText $ removeWord xs ++ " ^fg(" ++ colorRed ++ ")S^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
+			| isPrefixOf "Mirror" xs   = layoutText $ removeWord xs ++ " ^fg(" ++ colorBlue  ++ ")M^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
+			| isPrefixOf "ReflectY" xs = layoutText $ removeWord xs ++ " ^fg(" ++ colorBlue  ++ ")Y^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
+			| isPrefixOf "ReflectX" xs = layoutText $ removeWord xs ++ " ^fg(" ++ colorBlue  ++ ")X^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
+			| isPrefixOf "Switcher" xs = layoutText $ removeWord xs ++ " ^fg(" ++ colorRed   ++ ")S^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
 			| isPrefixOf "Normal" xs   = layoutText $ removeWord xs ++ " ^fg(" ++ colorGreen ++ ")N^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
 			| isPrefixOf "Unique" xs   = layoutText $ removeWord xs ++ " ^fg(" ++ colorGreen ++ ")U^fg(" ++ colorGray ++ ")|^fg(" ++ colorWhiteAlt ++ ")"
 			| otherwise                = concat $ reverse $ words xs
@@ -688,8 +693,8 @@ myWorkspaceL =
 	(dzenClickStyleL workspaceCA $ dzenBoxStyleL blue2BoxPP $ labelL "WORKSPACE") ++!
 	(dzenBoxStyleL whiteBoxPP $ onLogger namedWorkspaces logCurrent) where
 		namedWorkspaces w
-			| (elem w $ map show [0..9]) == True = "^fg(" ++ colorGreen ++ ")" ++ w ++ "^fg(" ++ colorGray ++ ")|^fg()" ++ workspaceNames !! (mod ((read w::Int) - 1) 10)
-			| otherwise                          = "^fg(" ++ colorRed ++ ")x^fg(" ++ colorGray ++ ")|^fg()" ++ w
+			| (elem w $ map show [0..9]) = "^fg(" ++ colorGreen ++ ")" ++ w ++ "^fg(" ++ colorGray ++ ")|^fg()" ++ workspaceNames !! (mod ((read w::Int) - 1) 10)
+			| otherwise                  = "^fg(" ++ colorRed   ++ ")x^fg(" ++ colorGray ++ ")|^fg()" ++ w
 
 
 --------------------------------------------------------------------------------------------
