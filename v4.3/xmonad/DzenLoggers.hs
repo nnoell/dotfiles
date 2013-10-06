@@ -9,7 +9,7 @@
 --------------------------------------------------------------------------------------------
 
 module DzenLoggers
-	( DF(..), BoxPP(..), CA(..)
+	( DF(..), BoxPP(..), CA(..), Res(..)
 	, dzenFlagsToStr, dzenBoxStyle, dzenClickStyle, dzenBoxStyleL, dzenClickStyleL
 	, (++!)
 	, labelL
@@ -26,13 +26,14 @@ module DzenLoggers
 	, cpuUsage
 	, uptime
 	, fsPerc
+	, getScreenRes, screenRes
 	) where
 
 
 import XMonad
---import XMonad.Util.Loggers
 import Control.Applicative
 import StatFS
+import Graphics.X11.Xinerama
 import Control.Exception as E
 
 
@@ -71,6 +72,13 @@ data CA = CA
 	, wheelUpCA     :: String
 	, wheelDownCA   :: String
 	}
+
+-- Screen Resolution
+data Res = Res
+	{ xRes :: Int
+	, yRes :: Int
+	}
+
 
 -- Create a dzen string with its flags
 dzenFlagsToStr :: DF -> String
@@ -127,7 +135,7 @@ labelL = return . return
 
 -- Init version for Logger
 initL :: Logger -> Logger
-initL = (fmap . fmap) init
+initL = (fmap . fmap) initNoNull
 
 -- Concat a list of loggers
 concatL :: [Logger] -> Logger
@@ -139,13 +147,16 @@ concatWithSpaceL :: [Logger] -> Logger
 concatWithSpaceL [] = return $ return ""
 concatWithSpaceL (x:xs) = x ++! (labelL " ") ++! concatWithSpaceL xs
 
+initNoNull :: [Char] -> [Char]
+initNoNull [] = "\n"
+initNoNull xs = init xs
+
 -- Convert the content of a file into a Logger
 fileToLogger :: (String -> String) -> String -> FilePath -> Logger
 fileToLogger f e p = do
 	let readWithE f1 e1 p1 = E.catch (do
 		contents <- readFile p1
-		let check x = if (null x) then (e ++ "\n") else x
-		return $ f1 (init $ check contents) ) ((\_ -> return e1) :: E.SomeException -> IO String)
+		return $ f1 (initNoNull contents) ) ((\_ -> return e1) :: E.SomeException -> IO String)
 	str <- liftIO $ readWithE f e p
 	return $ return str
 
@@ -162,7 +173,7 @@ brightPerc p = fileToLogger format "0" "/sys/class/backlight/acpi_video0/actual_
 
 wifiSignal :: Logger
 wifiSignal = fileToLogger format "N/A" "/proc/net/wireless" where
-	format x = if (length $ lines x) >= 3 then (init ((words ((lines x) !! 2)) !! 2) ++ "%") else "Off"
+	format x = if (length $ lines x) >= 3 then (initNoNull ((words ((lines x) !! 2)) !! 2) ++ "%") else "Off"
 
 cpuTemp :: Int -> Int -> String -> Logger
 cpuTemp n v c = initL $ concatWithSpaceL $ map (fileToLogger divc "0") pathtemps where
@@ -188,7 +199,7 @@ percMemUsage = (++"%") . show . _memPerc
 -- CPU Usage Logger: this is an ugly hack that depends on "haskell-cpu-usage" app (See my github repo to get the app)
 cpuUsage :: String -> Int -> String -> Logger
 cpuUsage path v c = fileToLogger format "0" path where
-	format x = if (null x) then "N/A" else init $ concat $ map (++" ") $ map crit $ tail $ words $ x
+	format x = if (null x) then "N/A" else initNoNull $ concat $ map (++" ") $ map crit $ tail $ words $ x
 	crit x = if ((read x::Int) >= v) then "^fg(" ++ c ++ ")" ++ x ++ "%^fg()" else (x ++ "%")
 
 uptime :: Logger
@@ -208,3 +219,18 @@ fsPerc str = do
 		let strfs = show $ div ((fsStatBytesUsed fss) * 100) (fsStatByteCount fss)
 		return $ strfs ++ "%"
 	return text
+
+-- Gets the current resolution of screen n
+getScreenRes :: String -> Int -> IO Res
+getScreenRes d n = do
+	dpy <- openDisplay d
+	r <- liftIO $ getScreenInfo dpy
+	return $ Res
+		{ xRes = fromIntegral $ rect_width $ r !! n
+		, yRes = fromIntegral $ rect_height $ r !! n
+		}
+
+screenRes :: String -> Int -> Logger
+screenRes d n = do
+	res <- liftIO $ getScreenRes d n
+	return $ return $ (show $ xRes res) ++ "x" ++ (show $ yRes res)

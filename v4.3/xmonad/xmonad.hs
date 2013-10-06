@@ -62,6 +62,7 @@ import XMonad.Actions.MouseResize
 import XMonad.Actions.FloatKeys
 import Data.Monoid
 import Data.List
+import Data.Default
 import Graphics.X11.ExtraTypes.XF86
 import System.Exit
 import System.IO (Handle, hPutStrLn)
@@ -82,10 +83,11 @@ import DzenLoggers
 
 main :: IO ()
 main = do
-	topLeftBar  <- spawnPipe $ "/usr/bin/dzen2" ++ dzenFlagsToStr dzenTopLeftFlags
-	topRightBar <- spawnPipe $ "/usr/bin/dzen2" ++ dzenFlagsToStr dzenTopRightFlags
-	botLeftBar  <- spawnPipe $ "/usr/bin/dzen2" ++ dzenFlagsToStr dzenBotLeftFlags
-	botRightBar <- spawnPipe $ "/usr/bin/dzen2" ++ dzenFlagsToStr dzenBotRightFlags
+	r <- getScreenRes ":0" 0  --display ":0", screen 0
+	topLeftBar  <- spawnPipe $ "/usr/bin/dzen2" ++ (dzenFlagsToStr $ dzenTopLeftFlags r)
+	topRightBar <- spawnPipe $ "/usr/bin/dzen2" ++ (dzenFlagsToStr $ dzenTopRightFlags r)
+	botLeftBar  <- spawnPipe $ "/usr/bin/dzen2" ++ (dzenFlagsToStr $ dzenBotLeftFlags r)
+	botRightBar <- spawnPipe $ "/usr/bin/dzen2" ++ (dzenFlagsToStr $ dzenBotRightFlags r)
 	xmonad $ myUrgencyHook $ defaultConfig
 		{ terminal           = "/usr/bin/urxvtc" --default terminal
 		, modMask            = mod4Mask          --default modMask
@@ -98,7 +100,7 @@ main = do
 		, startupHook        = myStartupHook     --autostart config
 		, handleEventHook    = myHandleEventHook --event config
 		, layoutHook         = myLayoutHook      --layout config
-		, manageHook         = myManageHook      --xprop config
+		, manageHook         = myManageHook r    --xprop config
 		, logHook            = do                --status bar config
 			myTopLeftLogHook topLeftBar            --top left dzen
 			myTopRightLogHook topRightBar          --top right dzen
@@ -134,15 +136,15 @@ colorRed       = "#f7a16e"
 colorRedAlt    = "#e0105f"
 colorGreen     = "#66ff66"
 colorGreenAlt  = "#558965"
-boxLeftIcon    = "/home/nnoell/.icons/xbm_icons/subtle/boxleft.xbm"   --left icon of dzen logger boxes
-boxLeftIcon2   = "/home/nnoell/.icons/xbm_icons/subtle/boxleft2.xbm"  --left icon2 of dzen logger boxes
-boxRightIcon   = "/home/nnoell/.icons/xbm_icons/subtle/boxright.xbm"  --right icon of dzen logger boxes
-xRes           = 1366
-yRes           = 768
-panelHeight    = 14  --height of top and bottom panels
-boxHeight      = 14  --height of dzen logger box
-topPanelSepPos = 950 --left-right alignment pos of top panel
-botPanelSepPos = 400 --left-right alignment pos of bottom panel
+boxLeftIcon    = "/home/nnoell/.icons/xbm_icons/subtle/boxleft.xbm"  --left icon of dzen boxes
+boxLeftIcon2   = "/home/nnoell/.icons/xbm_icons/subtle/boxleft2.xbm" --left icon2 of dzen boxes
+boxRightIcon   = "/home/nnoell/.icons/xbm_icons/subtle/boxright.xbm" --right icon of dzen boxes
+xDefRes        = 1366 --no longer used
+yDefRes        = 768  --no longer used
+panelHeight    = 16   --height of top and bottom panels
+boxHeight      = 14   --height of dzen logger box
+topPanelSepPos = 950  --left-right alignment pos of top panel
+botPanelSepPos = 400  --left-right alignment pos of bottom panel
 
 -- Title theme
 myTitleTheme :: Theme
@@ -320,14 +322,14 @@ focusCA = CA
 	, wheelDownCA   = "/usr/bin/xdotool key super+shift+k"
 	}
 
--- Workspace index
+-- Workspace index (do not change)
 myWorkspaces :: [WorkspaceId]
 myWorkspaces = map show $ [1..9] ++ [0]
 
 -- Workspace names
 workspaceNames :: [WorkspaceId]
 workspaceNames =
-	["Terminal"
+	[ "Terminal"
 	, "Network"
 	, "Development"
 	, "Graphics"
@@ -339,7 +341,7 @@ workspaceNames =
 	, "Alternate4"
 	]
 
--- Layout names (must be one word not equal to: Mirror, ReflectX, ReflectY, Switcher, Normal and Unique)
+-- Layout names (must be one word /= to: Mirror, ReflectX, ReflectY, Switcher, Normal and Unique)
 myTileName = "Tiled"
 myMirrName = "Mirror"
 myMosAName = "Mosaic"
@@ -360,7 +362,7 @@ myFloaName = "Float"
 myStartupHook = do
 	setDefaultCursor xC_left_ptr
 	spawn "/usr/bin/killall haskell-cpu-usage.out"
-	liftIO $ threadDelay 1000000 --needed so that xmonad can be recompiled and launched on the fly without crashing
+	liftIO $ threadDelay 1000000 --needed so that xmonad can be launched on the fly without crashing
 	spawn "/home/nnoell/.xmonad/apps/haskell-cpu-usage.out 5"
 	startTimer 1 >>= XS.put . TID
 
@@ -462,12 +464,12 @@ myLayoutHook =
 --------------------------------------------------------------------------------------------
 
 -- Manage Hook
-myManageHook :: ManageHook
-myManageHook = manageWindows <+> manageScratchPad <+> manageDocks <+> dynamicMasterHook
+myManageHook :: Res -> ManageHook
+myManageHook r = manageWindows <+> manageScratchPad r <+> manageDocks <+> dynamicMasterHook
 
 -- Scratchpad (W+º)
-manageScratchPad :: ManageHook
-manageScratchPad = scratchpadManageHook $ W.RationalRect (0) (panelHeight/yRes) (1) (3/4)
+manageScratchPad :: Res -> ManageHook
+manageScratchPad r = scratchpadManageHook $ W.RationalRect (0) (panelHeight / (toRational $ yRes r)) (1) (3/4)
 scratchPad = scratchpadSpawnActionCustom "/usr/bin/urxvtc -name scratchpad"
 
 -- Manage hook
@@ -524,8 +526,8 @@ myUrgencyHook = withUrgencyHook dzenUrgencyHook
 	}
 
 -- Dzen top left bar flags
-dzenTopLeftFlags :: DF
-dzenTopLeftFlags = DF
+dzenTopLeftFlags :: Res -> DF
+dzenTopLeftFlags _ = DF
 	{ xPosDF       = 0
 	, yPosDF       = 0
 	, widthDF      = topPanelSepPos
@@ -548,11 +550,11 @@ myTopLeftLogHook h = dynamicLogWithPP $ defaultPP
 	}
 
 -- Dzen top right bar flags
-dzenTopRightFlags :: DF
-dzenTopRightFlags = DF
+dzenTopRightFlags :: Res -> DF
+dzenTopRightFlags r = DF
 	{ xPosDF       = topPanelSepPos
 	, yPosDF       = 0
-	, widthDF      = xRes - topPanelSepPos
+	, widthDF      = (xRes r) - topPanelSepPos
 	, heightDF     = panelHeight
 	, alignementDF = "r"
 	, fgColorDF    = colorWhiteAlt
@@ -572,10 +574,10 @@ myTopRightLogHook h = dynamicLogWithPP $ defaultPP
 	}
 
 -- Dzen bottom left bar flags
-dzenBotLeftFlags :: DF
-dzenBotLeftFlags = DF
+dzenBotLeftFlags :: Res -> DF
+dzenBotLeftFlags r = DF
 	{ xPosDF       = 0
-	, yPosDF       = yRes - panelHeight
+	, yPosDF       = (yRes r) - panelHeight
 	, widthDF      = botPanelSepPos
 	, heightDF     = panelHeight
 	, alignementDF = "l"
@@ -607,11 +609,11 @@ myBotLeftLogHook h = dynamicLogWithPP . namedScratchpadFilterOutWorkspacePP $ de
 			xdo key = "/usr/bin/xdotool key super+" ++ key
 
 -- Dzen bottom right bar flags
-dzenBotRightFlags :: DF
-dzenBotRightFlags = DF
+dzenBotRightFlags :: Res -> DF
+dzenBotRightFlags r = DF
 	{ xPosDF       = botPanelSepPos
-	, yPosDF       = yRes - panelHeight
-	, widthDF      = xRes - botPanelSepPos
+	, yPosDF       = (yRes r) - panelHeight
+	, widthDF      = (xRes r) - botPanelSepPos
 	, heightDF     = panelHeight
 	, alignementDF = "r"
 	, fgColorDF    = colorWhiteAlt
@@ -655,6 +657,7 @@ myMemL =
 myCpuL =
 	(dzenBoxStyleL gray2BoxPP $ labelL "CPU") ++!
 	(dzenBoxStyleL blueBoxPP  $ cpuUsage "/tmp/haskell-cpu-usage.txt" 70 colorRed)
+
 
 -- BotLeft Loggers
 myFsL =
