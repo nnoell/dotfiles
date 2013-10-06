@@ -147,9 +147,11 @@ concatWithSpaceL :: [Logger] -> Logger
 concatWithSpaceL [] = return $ return ""
 concatWithSpaceL (x:xs) = x ++! (labelL " ") ++! concatWithSpaceL xs
 
-initNoNull :: [Char] -> [Char]
 initNoNull [] = "\n"
 initNoNull xs = init xs
+
+tailNoNull [] = ["\n"]
+tailNoNull xs = tail xs
 
 -- Convert the content of a file into a Logger
 fileToLogger :: (String -> String) -> String -> FilePath -> Logger
@@ -199,7 +201,7 @@ percMemUsage = (++"%") . show . _memPerc
 -- CPU Usage Logger: this is an ugly hack that depends on "haskell-cpu-usage" app (See my github repo to get the app)
 cpuUsage :: String -> Int -> String -> Logger
 cpuUsage path v c = fileToLogger format "0" path where
-	format x = if (null x) then "N/A" else initNoNull $ concat $ map (++" ") $ map crit $ tail $ words $ x
+	format x = if (null x) then "N/A" else initNoNull $ concat $ map (++" ") $ map crit $ tailNoNull $ words $ x
 	crit x = if ((read x::Int) >= v) then "^fg(" ++ c ++ ")" ++ x ++ "%^fg()" else (x ++ "%")
 
 uptime :: Logger
