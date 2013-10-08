@@ -147,10 +147,10 @@ concatWithSpaceL :: [Logger] -> Logger
 concatWithSpaceL [] = return $ return ""
 concatWithSpaceL (x:xs) = x ++! (labelL " ") ++! concatWithSpaceL xs
 
-initNoNull [] = "\n"
+initNoNull [] = "0\n"
 initNoNull xs = init xs
 
-tailNoNull [] = ["\n"]
+tailNoNull [] = ["0\n"]
 tailNoNull xs = tail xs
 
 -- Convert the content of a file into a Logger
