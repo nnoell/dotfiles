@@ -10,7 +10,7 @@
 
 module DzenLoggers
 	( DF(..), BoxPP(..), CA(..), Res(..)
-	, dzenFlagsToStr, dzenBoxStyle, dzenClickStyle, dzenBoxStyleL, dzenClickStyleL
+	, dzenFlagsToStr, dzenBoxStyle, dzenClickStyle, dzenSpawnPipe, dzenBoxStyleL, dzenClickStyleL
 	, (++!)
 	, labelL
 	, initL
@@ -31,6 +31,7 @@ module DzenLoggers
 
 
 import XMonad
+import XMonad.Util.Run (spawnPipe)
 import Control.Applicative
 import StatFS
 import Graphics.X11.Xinerama
@@ -117,6 +118,9 @@ dzenClickStyle ca t = "^ca(1," ++ leftClickCA ca ++
 					  ")" ++ t ++
 					  "^ca()^ca()^ca()^ca()^ca()"
 
+-- Launch dzen through the system shell and return a Handle to its standard input
+dzenSpawnPipe df = spawnPipe $ "dzen2" ++ dzenFlagsToStr df
+
 -- Logger version of dzenBoxStyle
 dzenBoxStyleL :: BoxPP -> Logger -> Logger
 dzenBoxStyleL bpp l = (fmap . fmap) (dzenBoxStyle bpp) l
@@ -135,7 +139,7 @@ labelL = return . return
 
 -- Init version for Logger
 initL :: Logger -> Logger
-initL = (fmap . fmap) initNoNull
+initL = (fmap . fmap) initNotNull
 
 -- Concat a list of loggers
 concatL :: [Logger] -> Logger
@@ -147,18 +151,20 @@ concatWithSpaceL :: [Logger] -> Logger
 concatWithSpaceL [] = return $ return ""
 concatWithSpaceL (x:xs) = x ++! (labelL " ") ++! concatWithSpaceL xs
 
-initNoNull [] = "0\n"
-initNoNull xs = init xs
+initNotNull :: String -> String
+initNotNull [] = "0\n"
+initNotNull xs = init xs
 
-tailNoNull [] = ["0\n"]
-tailNoNull xs = tail xs
+tailNotNull :: [String] -> [String]
+tailNotNull [] = ["0\n"]
+tailNotNull xs = tail xs
 
 -- Convert the content of a file into a Logger
 fileToLogger :: (String -> String) -> String -> FilePath -> Logger
 fileToLogger f e p = do
 	let readWithE f1 e1 p1 = E.catch (do
 		contents <- readFile p1
-		return $ f1 (initNoNull contents) ) ((\_ -> return e1) :: E.SomeException -> IO String)
+		return $ f1 (initNotNull contents) ) ((\_ -> return e1) :: E.SomeException -> IO String)
 	str <- liftIO $ readWithE f e p
 	return $ return str
 
@@ -175,7 +181,7 @@ brightPerc p = fileToLogger format "0" "/sys/class/backlight/acpi_video0/actual_
 
 wifiSignal :: Logger
 wifiSignal = fileToLogger format "N/A" "/proc/net/wireless" where
-	format x = if (length $ lines x) >= 3 then (initNoNull ((words ((lines x) !! 2)) !! 2) ++ "%") else "Off"
+	format x = if (length $ lines x) >= 3 then (initNotNull ((words ((lines x) !! 2)) !! 2) ++ "%") else "Off"
 
 cpuTemp :: Int -> Int -> String -> Logger
 cpuTemp n v c = initL $ concatWithSpaceL $ map (fileToLogger divc "0") pathtemps where
@@ -201,7 +207,7 @@ percMemUsage = (++"%") . show . _memPerc
 -- CPU Usage Logger: this is an ugly hack that depends on "haskell-cpu-usage" app (See my github repo to get the app)
 cpuUsage :: String -> Int -> String -> Logger
 cpuUsage path v c = fileToLogger format "0" path where
-	format x = if (null x) then "N/A" else initNoNull $ concat $ map (++" ") $ map crit $ tailNoNull $ words $ x
+	format x = if (null x) then "N/A" else initNotNull $ concat $ map (++" ") $ map crit $ tailNotNull $ words $ x
 	crit x = if ((read x::Int) >= v) then "^fg(" ++ c ++ ")" ++ x ++ "%^fg()" else (x ++ "%")
 
 uptime :: Logger

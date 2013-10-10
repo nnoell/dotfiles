@@ -14,9 +14,9 @@
 
 -- Modules
 import XMonad
-import XMonad.StackSet (RationalRect(..), currentTag)
 import XMonad.Layout
 import XMonad.Layout.IM
+import XMonad.Layout.Gaps
 import XMonad.Layout.Named
 import XMonad.Layout.Tabbed
 import XMonad.Layout.OneBig
@@ -29,7 +29,7 @@ import XMonad.Layout.NoBorders
 import XMonad.Layout.ResizableTile
 import XMonad.Layout.MultiToggle
 import XMonad.Layout.MultiToggle.Instances
-import XMonad.Layout.PerWorkspace (onWorkspace)
+import XMonad.Layout.PerWorkspace
 import XMonad.Layout.Minimize
 import XMonad.Layout.Maximize
 import XMonad.Layout.ToggleLayouts
@@ -52,7 +52,7 @@ import XMonad.Prompt.Man
 import XMonad.Util.Timer
 import XMonad.Util.Cursor
 import XMonad.Util.Loggers
-import XMonad.Util.Run (spawnPipe)
+import XMonad.Util.Run
 import XMonad.Util.Scratchpad
 import XMonad.Util.NamedScratchpad
 import XMonad.Actions.CycleWS
@@ -62,11 +62,10 @@ import XMonad.Actions.MouseResize
 import XMonad.Actions.FloatKeys
 import Data.Monoid
 import Data.List
-import Data.Default
-import Graphics.X11.ExtraTypes.XF86
 import System.Exit
-import System.IO (Handle, hPutStrLn)
-import Control.Concurrent (threadDelay)
+import System.IO
+import Control.Concurrent
+import Graphics.X11.ExtraTypes.XF86
 import Control.Exception as E
 import qualified XMonad.StackSet as W
 import qualified Data.Map as M
@@ -84,11 +83,11 @@ import DzenLoggers
 main :: IO ()
 main = do
 	r <- getScreenRes ":0" 0  --display ":0", screen 0
-	topLeftBar  <- spawnPipe $ "/usr/bin/dzen2" ++ (dzenFlagsToStr $ dzenTopLeftFlags r)
-	topRightBar <- spawnPipe $ "/usr/bin/dzen2" ++ (dzenFlagsToStr $ dzenTopRightFlags r)
-	botLeftBar  <- spawnPipe $ "/usr/bin/dzen2" ++ (dzenFlagsToStr $ dzenBotLeftFlags r)
-	botRightBar <- spawnPipe $ "/usr/bin/dzen2" ++ (dzenFlagsToStr $ dzenBotRightFlags r)
-	xmonad $ myUrgencyHook $ defaultConfig
+	topLeftBar  <- dzenSpawnPipe $ dzenTopLeftFlags r
+	topRightBar <- dzenSpawnPipe $ dzenTopRightFlags r
+	botLeftBar  <- dzenSpawnPipe $ dzenBotLeftFlags r
+	botRightBar <- dzenSpawnPipe $ dzenBotRightFlags r
+	xmonad $ myUrgencyHook def
 		{ terminal           = "/usr/bin/urxvtc" --default terminal
 		, modMask            = mod4Mask          --default modMask
 		, focusFollowsMouse  = True              --focus follow config
@@ -100,13 +99,13 @@ main = do
 		, startupHook        = myStartupHook     --autostart config
 		, handleEventHook    = myHandleEventHook --event config
 		, layoutHook         = myLayoutHook      --layout config
-		, manageHook         = myManageHook r    --xprop config
-		, logHook            = do                --status bar config
-			myTopLeftLogHook topLeftBar            --top left dzen
-			myTopRightLogHook topRightBar          --top right dzen
-			myBotLeftLogHook botLeftBar            --bottom left dzen
-			myBotRightLogHook botRightBar          --bottom right dzen
-			ewmhDesktopsLogHook
+		, manageHook         = myManageHook      --xprop config
+		, logHook            =                   --status bar config
+			myTopLeftLogHook topLeftBar   <+>      --top left dzen
+			myTopRightLogHook topRightBar <+>      --top right dzen
+			myBotLeftLogHook botLeftBar   <+>      --bottom left dzen
+			myBotRightLogHook botRightBar <+>      --bottom right dzen
+			ewmhDesktopsLogHook           >>
 			setWMName "LG3D"
 		, keys               = myKeys            --key bindings config
 		, mouseBindings      = myMouseBindings   --mouse bindings config
@@ -148,7 +147,7 @@ botPanelSepPos = 400  --left-right alignment pos of bottom panel
 
 -- Title theme
 myTitleTheme :: Theme
-myTitleTheme = defaultTheme
+myTitleTheme = def
 	{ fontName            = dzenFont
 	, inactiveBorderColor = colorGrayAlt2
 	, inactiveColor       = colorGrayAlt3
@@ -163,7 +162,7 @@ myTitleTheme = defaultTheme
 
 -- Prompt theme
 myXPConfig :: XPConfig
-myXPConfig = defaultXPConfig
+myXPConfig = def
 	{ font              = dzenFont
 	, bgColor           = colorBlack
 	, fgColor           = colorWhite
@@ -440,7 +439,7 @@ myFloaU = named ("Unique " ++ myFloaName) $ mouseResize $ noFrillsDeco shrinkTex
 
 -- Layout hook
 myLayoutHook =
-	avoidStruts $
+	gaps [(U,panelHeight), (D,panelHeight)] $
 	configurableNavigation noNavigateBorders $
 	minimize $
 	maximize $
@@ -464,15 +463,14 @@ myLayoutHook =
 --------------------------------------------------------------------------------------------
 
 -- Manage Hook
-myManageHook :: Res -> ManageHook
-myManageHook r = manageWindows <+> manageScratchPad r <+> manageDocks <+> dynamicMasterHook
+myManageHook :: ManageHook
+myManageHook =
+	manageDocks <+>
+	(scratchpadManageHook $ W.RationalRect 0 0 1 (3/4)) <+>
+	dynamicMasterHook <+>
+	manageWindows
 
--- Scratchpad (W+º)
-manageScratchPad :: Res -> ManageHook
-manageScratchPad r = scratchpadManageHook $ W.RationalRect (0) (panelHeight / (toRational $ yRes r)) (1) (3/4)
-scratchPad = scratchpadSpawnActionCustom "/usr/bin/urxvtc -name scratchpad"
-
--- Manage hook
+-- Manage Windows
 manageWindows :: ManageHook
 manageWindows = composeAll . concat $
 	[ [ resource  =? r --> doIgnore                    | r <- myIgnores ]
@@ -480,7 +478,7 @@ manageWindows = composeAll . concat $
 	, [ className =? c --> doShift (myWorkspaces !! 2) | c <- myCodeS   ]
 	, [ className =? c --> doShift (myWorkspaces !! 3) | c <- myGfxS    ]
 	, [ className =? c --> doShift (myWorkspaces !! 4) | c <- myChatS   ]
-	, [ className =? c --> doShift (myWorkspaces !! 7) | c <- myAlt3S   ]
+	, [ className =? c --> doShift (myWorkspaces !! 9) | c <- myAlt3S   ]
 	, [ className =? c --> doCenterFloat               | c <- myFloatCC ]
 	, [ name      =? n --> doCenterFloat               | n <- myFloatCN ]
 	, [ name      =? n --> doSideFloat NW              | n <- myFloatSN ]
@@ -542,7 +540,7 @@ dzenTopLeftFlags _ = DF
 
 -- Top left bar logHook
 myTopLeftLogHook :: Handle -> X ()
-myTopLeftLogHook h = dynamicLogWithPP $ defaultPP
+myTopLeftLogHook h = dynamicLogWithPP def
 	{ ppOutput = hPutStrLn h
 	, ppOrder  = \(_:_:_:x) -> x
 	, ppSep    = " "
@@ -566,7 +564,7 @@ dzenTopRightFlags r = DF
 
 -- Top right bar logHook
 myTopRightLogHook :: Handle -> X ()
-myTopRightLogHook h = dynamicLogWithPP $ defaultPP
+myTopRightLogHook h = dynamicLogWithPP def
 	{ ppOutput  = hPutStrLn h
 	, ppOrder   = \(_:_:_:x) -> x
 	, ppSep     = " "
@@ -590,7 +588,7 @@ dzenBotLeftFlags r = DF
 
 -- Bottom left bar logHook
 myBotLeftLogHook :: Handle -> X ()
-myBotLeftLogHook h = dynamicLogWithPP . namedScratchpadFilterOutWorkspacePP $ defaultPP
+myBotLeftLogHook h = dynamicLogWithPP . namedScratchpadFilterOutWorkspacePP $ def
 	{ ppOutput          = hPutStrLn h
 	, ppOrder           = \(ws:_:_:x) -> [ws] ++ x
 	, ppSep             = " "
@@ -616,7 +614,7 @@ dzenBotRightFlags r = DF
 	, widthDF      = (xRes r) - botPanelSepPos
 	, heightDF     = panelHeight
 	, alignementDF = "r"
-	, fgColorDF    = colorWhiteAlt
+	, fgColorDF    = colorBlue
 	, bgColorDF    = colorBlack
 	, fontDF       = dzenFont
 	, eventDF      = "onstart=lower"
@@ -625,7 +623,7 @@ dzenBotRightFlags r = DF
 
 -- Bottom right bar logHook
 myBotRightLogHook :: Handle -> X ()
-myBotRightLogHook h = dynamicLogWithPP $ defaultPP
+myBotRightLogHook h = dynamicLogWithPP def
 	{ ppOutput = hPutStrLn h
 	, ppOrder  = \(_:_:_:x) -> x
 	, ppSep    = " "
@@ -768,10 +766,10 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 	, ((modMask .|. shiftMask, xK_x), sendMessage $ XMonad.Layout.MultiToggle.Toggle REFLECTX)                                         --Reflect layout by X
 	, ((modMask .|. shiftMask, xK_y), sendMessage $ XMonad.Layout.MultiToggle.Toggle REFLECTY)                                         --Reflect layout by Y
 	--Gaps management bindings
-	, ((modMask .|. controlMask, xK_t), sendMessage $ ToggleStruts ) --toogle the all struts
-	, ((0, xF86XK_Calculator), sendMessage $ ToggleStruts)
-	, ((modMask .|. controlMask, xK_u), sendMessage $ ToggleStrut U) --toogle the top strut
-	, ((modMask .|. controlMask, xK_d), sendMessage $ ToggleStrut D) --toogle the bottom strut
+	, ((modMask .|. controlMask, xK_t), sendMessage $ ToggleGaps ) --toogle the all struts
+	, ((0, xF86XK_Calculator), sendMessage $ ToggleGaps)
+	, ((modMask .|. controlMask, xK_u), sendMessage $ ToggleGap U) --toogle the top strut
+	, ((modMask .|. controlMask, xK_d), sendMessage $ ToggleGap D) --toogle the bottom strut
 	--Scripts management bindings
 	, ((modMask, xK_d), spawn "/usr/bin/killall dzen2 haskell-cpu-usage.out")                                             --Kill dzen2
 	, ((0, 0x1008ffa9), spawn "/home/nnoell/bin/touchpadtoggle.sh")                                                       --Toggle touchpad (xmodmap -pk | grep -i toggle)
@@ -810,8 +808,9 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 	  | (key, sc) <- zip [xK_w, xK_e, xK_r] [0..]
 	  , (f, m) <- [(W.view, 0), (W.shift, shiftMask)]
 	] where
+		scratchPad = scratchpadSpawnActionCustom "/usr/bin/urxvtc -name scratchpad"
 		fullFloatFocused = withFocused $ \f -> windows =<< appEndo `fmap` runQuery doFullFloat f
-		rectFloatFocused = withFocused $ \f -> windows =<< appEndo `fmap` runQuery (doRectFloat $ RationalRect 0.05 0.05 0.9 0.9) f
+		rectFloatFocused = withFocused $ \f -> windows =<< appEndo `fmap` runQuery (doRectFloat $ W.RationalRect 0.05 0.05 0.9 0.9) f
 		killAndExit = do
 			spawn "/usr/bin/killall dzen2 haskell-cpu-usage.out"
 			io (exitWith ExitSuccess)
