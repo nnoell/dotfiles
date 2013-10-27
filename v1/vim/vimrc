@@ -1,0 +1,68 @@
+set nocompatible
+
+syntax enable
+
+if &term=~'linux'
+	colorscheme default
+else
+	set t_Co=256
+	colorscheme neuromouse
+	set list
+	set listchars=tab:»\ ,eol:¬
+	set colorcolumn=100
+	set mouse=a
+endif
+
+"tab mappings
+map <C-t> :tabnew \| FufFile<CR>
+map <C-o> :FufFile<CR>
+map <C-n> gt
+map <C-p> gT
+
+
+set autoread
+autocmd! bufwritepost .vimrc source %
+set shell=zsh
+set backspace=2
+set cursorline
+"set cursorcolumn
+set encoding=utf-8
+"set expandtab
+set fileencodings=utf-8
+set fileformats=unix,dos,mac
+set foldmethod=marker
+set formatprg=par
+set hidden
+set history=1000
+set ignorecase
+"set incsearch
+set noequalalways
+"set nohlsearch
+set nojoinspaces
+set number
+set omnifunc=syntaxcomplete#Complete
+set shiftround
+set shiftwidth=4
+set showcmd
+set shortmess=filnxtToOI
+set splitbelow
+set splitright
+set smartcase
+set spelllang=eng
+set tabstop=4
+set timeoutlen=600
+set ttyfast
+set visualbell t_vb=".
+set wildmode=list:longest,list:full
+set wrapmargin=0
+set nowrap
+" Necessary order
+set linebreak
+set textwidth=0
+set display=lastline
+set ruler
+set statusline=[%n]\ %<%f%m%r\ %w\ %y\ \ <%{&fileformat}>%=[%o]\ %l,%c%V\/%L\ \ %P
+
+autocmd BufNewFile,BufRead Xdefaults  set ft=xdefaults
+
+filetype indent off
