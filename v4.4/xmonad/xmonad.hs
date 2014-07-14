@@ -980,7 +980,8 @@ memUsage :: [(String -> String)] -> Logger
 memUsage xs = initL $ concatWithSpaceL $ map funct xs where
 	funct x = fileToLogger x "N/A" "/proc/meminfo"
 
-_memUsed x = (_memValues x !! 0) - ((_memValues x !! 2) + (_memValues x !! 3) + (_memValues x !! 1))
+--_memUsed x = (_memValues x !! 0) - ((_memValues x !! 2) + (_memValues x !! 3) + (_memValues x !! 1)) --old format
+_memUsed x = (_memValues x !! 0) - (_memValues x !! 2)  --new format
 _memPerc x = div (_memUsed x * 100) (_memValues x !! 0)
 _memValues x = map (getValues x) $ take 4 [0..] where
 	getValues x n = read (words (lines x !! n) !! 1)::Int
